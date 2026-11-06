@@ -48,7 +48,7 @@ function holeView(){
   const n=R.cur,d=D[n-1],h=H(n),s=suggest(n),r=rem(n);
   const opts=D.map((x,i)=>{const v=R.holes[i+1],m=v&&touched(v)?' ('+strokes(v)+')':'';return'<option value="'+(i+1)+'"'+(i+1===n?' selected':'')+'>'+(i+1)+'番 Par'+x.p+m+'</option>'}).join('');
   const clubs=byDist().slice().reverse().map(c=>{const on=U.sel===c.name,rc=s.rec&&(c.name===s.rec||s.rec.indexOf(c.name)>=0);return'<button data-club="'+esc(c.name)+'" class="'+(on?'sel ':'')+(rc?'rec':'')+'"'+(ng(c,h)?' style="opacity:.55"':'')+'>'+esc(c.name)+'<small>'+(ng(c,h)?'使わない':eff(c,h)+'Y')+'</small></button>'}).join('');
-  const sel=U.sel?'<div class="res"><button data-res="ok">普通</button><button class="mid" data-res="short">短い</button><button class="warn" data-res="ob">OB・池</button></div><p class="note">'+esc(U.sel)+'の結果を選びます。短いは目安の半分です。OB・池は1打罰で距離は変えません。</p>':'';
+  const sel=U.sel?'<div class="res"><button data-res="ok">普通</button><button class="mid" data-res="short">短い</button><button class="warn" data-res="ob">OB・池</button></div><p class="note">'+esc(U.sel)+'の結果を選びます。短いは目安の半分です。OB・池は1打罰で距離は変えません。</p>'+(ADV[U.sel]?'<p class="note" style="color:var(--fg)">'+esc(ADV[U.sel][1])+'</p>':''):'';
   const log=h.shots.length?'<div class="log">'+h.shots.map((x,i)=>'<span>'+(i+1)+'. '+esc(x.c)+' '+({ok:'普通',short:'短い',ob:'OB・池'}[x.r])+'</span>').join('')+'</div>':'';
   app.innerHTML='<div class="nav"><button data-go="-1" aria-label="前のホール">◀</button><select id="pick" aria-label="ホール選択">'+opts+'</select><button data-go="1" aria-label="次のホール">▶</button></div>'+
   '<div class="now"><div><div class="lab">'+(h.green?'グリーン上':'残り')+'　'+(R.tee==='g'?'Green':'White')+' '+yards(n)+'Y・HDCP'+d.hc+'</div><div class="rem">'+(h.green?'ON':r+'Y')+'</div></div><div class="sc">打数<b>'+strokes(h)+'</b>Par'+d.p+'</div></div>'+
@@ -68,7 +68,19 @@ function scoreView(){
 function clubsView(){
   app.innerHTML='<section class="card"><div class="h">使うティー</div><div class="two"><button class="'+(R.tee==='w'?'act':'ghost')+'" data-tee="w">White</button><button class="'+(R.tee==='g'?'act':'ghost')+'" data-tee="g">Green</button></div></section><section class="card"><div class="h">番手の距離（Y）</div>'+R.clubs.map((c,i)=>'<div class="row"><div style="align-self:center;font-weight:700">'+esc(c.name)+'</div><input class="input" data-dist="'+i+'" type="number" inputmode="numeric" min="1" max="350" value="'+c.dist+'" aria-label="'+esc(c.name)+'の距離"></div>').join('')+'</section><section class="card"><button class="link" data-act="reset">'+(U.arm?'もう一度押すと全ホールの記録を消します':'ラウンド記録をすべて消す')+'</button></section>';
 }
-function render(){({hole:holeView,score:scoreView,clubs:clubsView})[U.view]();document.querySelectorAll('.tabbar button').forEach(b=>b.setAttribute('aria-current',b.dataset.view===U.view))}
+const ADV={"1W":["ティーのみ","ティーのみ。右へのミスを前提に、フェアウェイ左を向く。練習で計測なし。レッスン2では右ばかりだったので、手を高く上げず、3秒止まれる強さで振る。"],"3W":["使わない","6球で57〜177Y。今回いちばん結果が散った番手。5Wと距離が同じなので、明日は使わなくてよい。"],"5W":["使わない","1球のみ159Y。ティーとFWの平らな場所だけで使う。"],"4U":["短く持って可","2球とも189Yで、今回いちばん良い番手候補。ただし2球だけなので160Yで計画。3番・17番の池越えと16番のティーで使う。"],"5U":["短く持って可","未計測で目安のまま。長い距離が残った時の刻みの基本番手。"],"6I":["使わない","4球で106〜157Y。50Y以上の差があり、距離が読めない。ラフでは8I以下に下げる。"],"7I":["可","1球のみ140Y。6Iを超えるとは判断できないので130Yで計画。12番の谷越えはこの番手以上。"],"8I":["可","肩までで80〜97Y、フルで120Y。95Yを肩までで打つ選択肢がある。"],"9I":["可","100Yと106Y。結果が近く、今回は安定。"],"PW":["可","5球で81〜115Y。中央値107Yだが、コースでは手前に残りがちなので100Yで計画。コーチの話どおり、90Yも強く振らず普通に振る。"],"AW":["可","8球で76〜99Y。いちばんデータが多い。70〜90Yの主力。17番の刻みには使わない（池に届く恐れ）。"],"SW":["深いラフ・30Y以内","肩まで58〜60Y、フル63Y。肩までで十分飛ぶので、フルで振らない。"]};
+function bands(k){const h0={lie:k},a=byDist().filter(c=>!/1W|3W/.test(c.name)&&!ng(c,h0));let p=0;const o=[];a.forEach(c=>{const d=eff(c,h0);if(d>p){o.push([p?(p+1)+'〜'+d+'Y':d+'Y以内',c.name]);p=d}});o.push([(p+1)+'Y以上',k==='light'?'7Iか8Iで花道へ':'5Uで刻む']);return o}
+function bandTable(t,k){return'<div><table><thead><tr><th>'+t+'</th><th>番手</th></tr></thead><tbody>'+bands(k).map(x=>'<tr><td>'+x[0]+'</td><td style="font-weight:700">'+esc(x[1])+'</td></tr>').join('')+'</tbody></table></div>'}
+function adviceView(){
+  const sec=U.adv||'club',n=R.cur,d=D[n-1],h=H(n);
+  const tabs='<section class="card"><div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px">'+[['club','番手別'],['chart','残り距離'],['lie','ラフ・傾斜']].map(x=>'<button class="'+(sec===x[0]?'act':'ghost')+'" style="white-space:nowrap;font-size:14px;padding:0 2px" data-adv="'+x[0]+'" aria-pressed="'+(sec===x[0])+'">'+x[1]+'</button>').join('')+'</div><p class="note">今は'+n+'番 Par'+d.p+'・球の場所は'+LIE[lieOf(h)]+'です。下の「ホール」で戻れます。</p></section>';
+  let b='';
+  if(sec==='club'){const fw={lie:'fw'},lt={lie:'light'};b=R.clubs.map(c=>{const a=ADV[c.name];return'<section class="card"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><div class="h" style="font-size:18px">'+esc(c.name)+'</div><div style="font-weight:700;color:var(--accent);white-space:nowrap">'+c.dist+'Y'+(ng(c,lt)?'':'・浅いラフ'+eff(c,lt)+'Y')+'</div></div><div style="font-size:15px;line-height:1.6">'+esc(a?a[1]:'登録した番手です。')+'</div><div class="note">ラフ：'+esc(a?a[0]:'未設定')+'</div></section>'}).join('')}
+  else if(sec==='chart'){b='<section class="card"><div class="h">残り距離から番手を選ぶ</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;align-items:start">'+bandTable('FW','fw')+bandTable('浅いラフ','light')+'</div><p class="note">深いラフは距離に関係なくSWかAWで出します。30Y以内はSWかAWで寄せます。</p></section><section class="card"><div class="h">池・谷を越える時だけ</div><div style="font-size:15px;line-height:1.6">距離は転がり込みです。越える距離に<b>20Yを足して</b>番手を選びます（仮のルール）。<br>3番・17番（約130Y）→ 4U<br>12番（約110Y）→ 7I以上</div></section>'}
+  else{b='<section class="card"><dl>'+[['FW（芝が短い）','表の距離どおり。ウッドが使えるのはここだけ。いつもの手順で、3秒止まれる強さで振ります。'],['浅いラフ（球が見える）','距離は1割引で計算。ウッドと6Iは使いません。短く持ち、足幅を少し狭く、ボールを少し右へ。コンパクトに振り抜きます。'],['深いラフ（球が沈む）','距離は考えず、SWかAWでFWへ出します。力まず、1打で戻せれば成功です。'],['上り傾斜（左足上がり）','手前に残りやすいので1番手大きく。傾斜に逆らわず立ち、振りすぎず当てます。'],['下り傾斜（左足下がり）','番手を下げ、SW〜8Iで前へ運びます。ボールは右寄り。すくい上げません。'],['バンカー','SWで1回で出すことを優先します。砂の中では素振りでも砂に触りません（2打罰の対象）。']].map(x=>'<dt>'+x[0]+'</dt><dd>'+x[1]+'</dd>').join('')+'</dl><p class="note">ラフの割引と傾斜の項目は一般的な目安です。コーチの指示を優先してください。</p></section>'}
+  app.innerHTML=tabs+b;
+}
+function render(){({hole:holeView,score:scoreView,advice:adviceView,clubs:clubsView})[U.view]();document.querySelectorAll('.tabbar button').forEach(b=>b.setAttribute('aria-current',b.dataset.view===U.view))}
 function refreshGps(){const e=document.getElementById('gpsline');if(e)e.textContent=gpsLine()}
 function onPos(p){
   G.err='';G.acc=p.coords.accuracy;G.at=Date.now();const y=yardsTo([p.coords.latitude,p.coords.longitude],D[R.cur-1].gc);
@@ -89,6 +101,7 @@ document.addEventListener('click',e=>{
   if(a.hole){U.view='hole';moveTo(Number(a.hole));return}
   if(a.club){U.sel=U.sel===a.club?null:a.club;render();return}
   if(a.res){shot(a.res);return}
+  if(a.adv){U.adv=a.adv;render();window.scrollTo(0,0);return}
   if(a.lie){const h=H(R.cur);h.lie=a.lie;save();render();return}
   if(a.tee){R.tee=a.tee;save();render();return}
   if(a.putt){const h=H(R.cur);h.putts=Math.max(0,h.putts+Number(a.putt));save();render();return}
