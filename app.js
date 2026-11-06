@@ -57,7 +57,7 @@ function holeView(){
   const n=R.cur,d=D[n-1],h=H(n),s=suggest(n),r=rem(n);
   const opts=D.map((x,i)=>{const v=R.holes[i+1],m=v&&touched(v)?' ('+strokes(v)+')':'';return'<option value="'+(i+1)+'"'+(i+1===n?' selected':'')+'>'+(i+1)+'番 Par'+x.p+m+'</option>'}).join('');
   const clubs=byDist().slice().reverse().map(c=>{const on=U.sel===c.name,rc=s.rec&&(c.name===s.rec||s.rec.indexOf(c.name)>=0);return'<button data-club="'+esc(c.name)+'" class="'+(on?'sel ':'')+(rc?'rec':'')+'"'+(ng(c,h)?' style="opacity:.55"':'')+'>'+esc(c.name)+'<small>'+(ng(c,h)?'使わない':eff(c,h)+'Y')+'</small></button>'}).join('');
-  const sel=U.sel?'<div class="res"><button data-res="ok">普通</button><button class="mid" data-res="short">短い</button><button class="warn" data-res="ob">OB・池</button>'+f4Btn(n)+'</div>'+f4Box(n)+'<p class="note">'+esc(U.sel)+'の結果を選びます。短いは目安の半分です。OB・池は1打罰で距離は変えません。</p>'+(ADV[U.sel]?'<p class="note" style="color:var(--fg)">'+esc(ADV[U.sel][1])+'</p>':''):'';
+  const sel=U.sel?'<div class="res"><button data-res="ok">普通</button><button class="mid" data-res="short">短い</button><button class="warn" data-res="ob">OB・池</button>'+f4Btn(n)+'</div>'+f4Box(n)+'<p class="note">'+esc(U.sel)+'の結果を選びます。短いは目安の半分です。OB・池は1打罰で距離は変えません。</p>'+(ADV[U.sel]?'<p class="note" style="color:var(--fg)">'+esc(ADV[U.sel][1])+'</p>':'')+(COACH[U.sel]?'<p class="note">コーチ：'+esc(COACH[U.sel][0])+'</p>':''):'';
   const log=h.shots.length?'<div class="log">'+h.shots.map((x,i)=>'<span>'+(i+1)+'. '+(x.r==='miss'?'':esc(x.c)+' ')+({ok:'普通',short:'短い',ob:'OB・池',miss:'空振り',f4:'前進'+(x.t||4)+'打'}[x.r])+(x.lie==='bunker'?'（バンカー）':'')+(x.dist?'・'+x.dist+'Y':'')+'</span>').join('')+'</div>':'';
   app.innerHTML='<div class="nav"><button data-go="-1" aria-label="前のホール">◀</button><select id="pick" aria-label="ホール選択">'+opts+'</select><button data-go="1" aria-label="次のホール">▶</button></div>'+
   '<div class="now"><div><div class="lab">'+(h.green?'グリーン上':'残り')+'　'+TN[R.tee]+' '+yards(n)+'Y・HDCP'+d.hc+'</div><div class="rem">'+(h.green?'ON':r+'Y')+'</div></div><div class="sc">打数<b>'+strokes(h)+'</b>Par'+d.p+'</div></div>'+
@@ -97,7 +97,7 @@ function histBox(){const L=R.hist||[],m=roundSummary(),saved=R.rid&&L.some(x=>x.
   const rows=L.map(x=>'<tr><td style="white-space:nowrap">'+esc(x.date.slice(5))+'</td><td>'+x.t+(x.n<18?'<small>（'+x.n+'H）</small>':'')+'</td><td>'+x.a.putts+'</td><td>'+x.a.bunker+'</td><td>'+x.a.miss+'</td><td>'+x.a.ob+'</td><td><button class="ghost" style="min-height:32px;padding:0 6px;font-size:13px" data-hdel="'+esc(x.id)+'">'+(U.hdel===x.id?'消す':'×')+'</button></td></tr>').join('');
   return '<section class="card"><div class="h">ラウンド履歴</div><button class="act" data-hsave="1"'+(m.n?'':' disabled')+'>'+(saved?'このラウンドの履歴を更新':'このラウンドを履歴に保存')+'</button>'+(L.length?'<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;text-align:center"><div><small>平均スコア</small><div style="font-weight:700;font-size:20px">'+avg(x=>x.t)+'</div></div><div><small>ベスト</small><div style="font-weight:700;font-size:20px">'+(f.length?Math.min(...f.map(x=>x.t)):'-')+'</div></div><div><small>平均パット</small><div style="font-weight:700;font-size:20px">'+avg(x=>x.a.putts)+'</div></div></div><table><thead><tr><th>日付</th><th>打数</th><th>パ</th><th>B</th><th>空</th><th>OB</th><th></th></tr></thead><tbody>'+rows+'</tbody></table><p class="note">平均とベストは18ホール記録したラウンドだけで計算します。</p>':'<p class="note">保存すると次回以降も残り、平均スコアやパット数を見られます。</p>')+(m.n?'<button class="ghost" data-hnew="1">'+(U.hnew?(saved?'もう一度押すと今の記録を消して始めます':'未保存です。もう一度押すと今の記録を消します'):'新しいラウンドを始める')+'</button>':'')+'</section>'}
 function quickBox(n,h){const d=D[n-1],v=h.quick!=null?h.quick:strokes(h);return '<section class="card"><div class="h">このホールの合計打数</div><div style="display:grid;grid-template-columns:72px 1fr 72px;gap:8px;align-items:center"><button class="ghost" style="font-size:24px" data-q="-1" aria-label="1打減らす">−</button><div style="text-align:center;font-size:40px;font-weight:700">'+(v||'-')+'</div><button class="act" style="font-size:24px" data-q="1" aria-label="1打増やす">＋</button></div><div class="two"><button class="ghost" data-qclear="1"'+(h.quick==null?' disabled':'')+'>入力を消す</button><button class="act" data-go="1">次のホールへ</button></div><p class="note">未入力の時は最初の＋でPar'+d.p+'になります。ここの数字は詳しい記録より優先します。</p><button class="ghost" data-simple="0">詳しい記録に戻す</button></section>'}
-const VER='v23';
+const VER='v24';
 const DIR={left:'左',straight:'まっすぐ',right:'右'},HIT={good:'芯',fat:'ダフリ',top:'トップ',shank:'シャンク'};
 function feelBox(h){const s=h.shots[h.shots.length-1];if(!s||s.r==='miss')return'';const b=(o,k,v)=>'<div style="display:grid;grid-template-columns:repeat('+Object.keys(o).length+',minmax(0,1fr));gap:4px">'+Object.keys(o).map(x=>'<button style="font-size:13px;padding:0 1px;white-space:nowrap;min-height:44px" class="'+(v===x?'act':'ghost')+'" data-'+k+'="'+x+'" aria-pressed="'+(v===x)+'">'+o[x]+'</button>').join('')+'</div>';return'<section class="card"><div class="h">今の1打の感触（'+esc(s.c)+(s.dist?'・実測'+s.dist+'Y':'')+'）</div>'+b(DIR,'fd',s.dir)+b(HIT,'fh',s.hit)+'<p class="note">押さなくても打数は記録されています。もう一度押すと取り消せます。</p></section>'}
 function curShots(){const o=[];Object.keys(R.holes).forEach(n=>{(R.holes[n].shots||[]).forEach(s=>{if(s.r!=='miss')o.push(Object.assign({h:Number(n)},s))})});return o}
@@ -116,6 +116,26 @@ function markBall(h){endShot(lastReal(h),fixPos())}
 function shotFrom(h){const l=lastReal(h),p=fixPos();endShot(l,p);if(l&&l.r==='ob')return l.from||p;return(l&&l.to)||p}
 function lieTip(n,h){if(R.simple||h.green||atTee(n))return'';return{fw:'FW：いつもの手順で、3秒止まれる強さで振ります。',light:'浅いラフ：クラブを短く、足幅を少し狭く、ボールを少し右へ。ウッドと6Iは使いません。',deep:'深いラフ：力まず、SWかAWでFWへ戻します。距離は考えません。',bunker:'バンカー：SWを使います。構えと素振りで砂に触りません。'}[lieOf(h)]}
 function distStats(){const L=allShots().filter(s=>s.dist);if(!L.length)return'<p class="note">実測はまだありません。GPSをオンにして、球に着いたら球の場所を押すと記録します。</p>';const names=[];L.forEach(s=>{if(names.indexOf(s.c)<0)names.push(s.c)});const order=(typeof CL!=='undefined'?CL:R.clubs).map(c=>c.name);names.sort((a,b)=>order.indexOf(a)-order.indexOf(b));return'<div class="h">番手別の実測飛距離（GPS）</div><table style="font-size:14px"><thead><tr><th>番手</th><th>回数</th><th>平均</th><th>最長</th><th>最短</th></tr></thead><tbody>'+names.map(c=>{const v=L.filter(s=>s.c===c).map(s=>s.dist);return'<tr><td style="font-weight:700">'+esc(c)+'</td><td>'+v.length+'</td><td>'+Math.round(v.reduce((a,b)=>a+b,0)/v.length)+'Y</td><td>'+Math.max(...v)+'Y</td><td>'+Math.min(...v)+'Y</td></tr>'}).join('')+'</tbody></table><p class="note">転がりを含む、止まった場所までの直線距離です。GPSの誤差で10Y前後ずれることがあります。</p>'}
+const COACH={
+'1W':['手を高く上げない。5割の振りなら手は胸の高さ、体の近くに収める（高く上げると伸び上がり、フェースが開いて右へ）。','フルは胸を目標へ向け、クラブが背中か首の後ろにつくまで振る。','打った後は右足のつま先で立ち、足の裏を後ろの人に見せる。','練習はいちばん短く。次回レッスンでスライス（右に曲がる球）を直す予定。'],
+'3W':['ボールは真ん中より左寄り。長いクラブほど左へ、半個〜1個分ずつ。','高く上げようとしない。3秒止まれる強さで振る。'],
+'5W':['ボールは真ん中より左寄り。','高く上げようとしない。3秒止まれる強さで振る。'],
+'4U':['ボールは真ん中より左寄り。','腕ではなく肩と体で回す。右手で押さない。'],
+'5U':['ボールは真ん中より左寄り。','腕ではなく肩と体で回す。右手で押さない。'],
+'6I':['ボールは真ん中より左寄り。','腕と肩の三角形を、打つ手前で崩さない。'],
+'7I':['ボールは真ん中より左寄り。','グリップの先とおへそを一緒に動かす。手だけ先に上げない。'],
+'8I':['ボールは真ん中〜少し左。','左膝を動かしすぎない。コースは傾斜があるので特に注意。'],
+'9I':['ボールは真ん中。','左膝を動かしすぎない。'],
+'PW':['ボールは真ん中より少し右。','90Yも強く振らず、PWを普通に振る。球を上げようと頑張らない。','距離は振り幅で作る。上げてから緩めない。'],
+'AW':['ボールは右足寄り。','短い距離は足幅を狭く、クラブを短く持つ。構えから変える。','距離は振り幅で作る。上げてから緩めない。'],
+'SW':['短い距離は足幅を狭く、ボールを右足寄り、クラブを短く持つ。','左膝を動かしすぎない。','100Y以内は一番の見せ場。行ったり来たりを減らす。']};
+const BASE=[['構え','まっすぐ立ち、二の腕がわき腹に軽くつく形のまま腰を折る。クラブがついた場所がボール位置。分からなくなったらこの手順に戻る。'],['構え','手が体から離れていく癖に注意。わきを軽く締めて構え直す。構えたらスッと打ち始める。'],['構え','うまく当たらない時は、スイングより先に構えを疑う。'],['スイング','腕ではなく肩と体で回す。右手で押さない（詰まる・フェースが開く）。'],['強さ','3秒止まれる強さで振る。ふらつく、クラブが下がるなら振りすぎ。緩めすぎもダメ。'],['フィニッシュ','右足をめくる。体重は意識せず、右足の動きだけを意識する。'],['考え方','最高の一打より、最悪を避ける。練習場の出来はコースで半分くらいになる前提。一発で直そうとしない。']];
+const FLOW=[['ティーで','ホールを選び、「GPS オン」にする。「次の番手」と画像で狙いを確認。'],['打ったら','その場で番手を押し、結果（普通・短い・OB・池）を押す。空振りは「空振り（1打追加）」。OBで特設ティーへ進むなら「前進4打」。'],['すぐ後で（任意）','「今の1打の感触」で左・まっすぐ・右、芯・ダフリ・トップ・シャンクを押す。'],['球に着いたら','「球の場所」でFW・浅いラフ・深いラフ・バンカーのどれかを押す。FWでも押す。これが到着の合図で、実測飛距離が記録され、番手の提案も変わる。'],['グリーンで','「グリーンに乗った」→ パットごとに「パットを記録」。入ったら上の「▶」で次のホール。'],['直したい時','押し間違いは「1打戻す」。距離はカートナビの数字を「残り距離を手入力」へ。'],['ラウンド後','「スコア」タブで「このラウンドを履歴に保存」。']];
+function coachView(){const sec=U.coach||'club';const tabs='<section class="card"><div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px">'+[['club','番手別'],['base','基本'],['flow','使い方']].map(x=>'<button class="'+(sec===x[0]?'act':'ghost')+'" style="white-space:nowrap;font-size:14px;padding:0 2px" data-coach="'+x[0]+'" aria-pressed="'+(sec===x[0])+'">'+x[1]+'</button>').join('')+'</div><p class="note">2回のレッスン（10/25・11/01）の文字起こしから作成。迷ったらコーチの指示を優先。</p></section>';let b='';
+if(sec==='club'){const L=(typeof CL!=='undefined'?CL.slice().sort((x,y)=>(x.order||0)-(y.order||0)):R.clubs);b=L.map(c=>{const t=COACH[c.name];if(!t)return'';return'<section class="card"><div style="display:flex;justify-content:space-between;align-items:baseline"><div class="h" style="font-size:18px">'+esc(c.name)+'</div><div style="font-weight:700;color:var(--accent)">'+c.dist+'Y</div></div><ul style="margin:0;padding-left:20px;line-height:1.6">'+t.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></section>'}).join('')}
+else if(sec==='base'){b='<section class="card"><div class="h">当日はこの3つだけ</div><ol style="margin:0;padding-left:22px;line-height:1.6"><li>構えを毎回そろえる</li><li>3秒止まれる強さで振る</li><li>短い距離は構えから変える</li></ol></section><section class="card"><dl>'+BASE.map(x=>'<dt>'+x[0]+'</dt><dd>'+esc(x[1])+'</dd>').join('')+'</dl></section>'}
+else{b='<section class="card"><div class="h">1打の流れ</div><ol style="margin:0;padding-left:22px;line-height:1.6">'+FLOW.map(x=>'<li><b>'+x[0]+'</b>：'+esc(x[1])+'</li>').join('')+'</ol><p class="note">押したボタンはその場で保存されます。反映ボタンはありません。</p></section>'}
+app.innerHTML=tabs+b}
 function adviceView(){
   const sec=U.adv||'club',n=R.cur,d=D[n-1],h=H(n);
   const tabs='<section class="card"><div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px">'+[['club','番手別'],['chart','残り距離'],['lie','ラフ・傾斜']].map(x=>'<button class="'+(sec===x[0]?'act':'ghost')+'" style="white-space:nowrap;font-size:14px;padding:0 2px" data-adv="'+x[0]+'" aria-pressed="'+(sec===x[0])+'">'+x[1]+'</button>').join('')+'</div><p class="note">今は'+n+'番 Par'+d.p+'・球の場所は'+LIE[lieOf(h)]+'です。下の「ホール」で戻れます。</p></section>';
@@ -125,7 +145,7 @@ function adviceView(){
   else{b='<section class="card"><dl>'+[['FW（芝が短い）','表の距離どおり。ウッドが使えるのはここだけ。いつもの手順で、3秒止まれる強さで振ります。'],['浅いラフ（球が見える）','距離は1割引で計算。ウッドと6Iは使いません。短く持ち、足幅を少し狭く、ボールを少し右へ。コンパクトに振り抜きます。'],['深いラフ（球が沈む）','距離は考えず、SWかAWでFWへ出します。力まず、1打で戻せれば成功です。'],['上り傾斜（左足上がり）','手前に残りやすいので1番手大きく。傾斜に逆らわず立ち、振りすぎず当てます。'],['下り傾斜（左足下がり）','番手を下げ、SW〜8Iで前へ運びます。ボールは右寄り。すくい上げません。'],['バンカー','SWで1回で出すことを優先します。砂の中では素振りでも砂に触りません（2打罰の対象）。']].map(x=>'<dt>'+x[0]+'</dt><dd>'+x[1]+'</dd>').join('')+'</dl><p class="note">ラフの割引と傾斜の項目は一般的な目安です。コーチの指示を優先してください。</p></section>'}
   app.innerHTML=tabs+b;
 }
-function render(){({hole:holeView,score:scoreView,advice:adviceView,clubs:clubsView})[U.view]();scoreBar();document.querySelectorAll('.tabbar button').forEach(b=>b.setAttribute('aria-current',b.dataset.view===U.view))}
+function render(){({hole:holeView,score:scoreView,advice:adviceView,clubs:clubsView,coach:coachView})[U.view]();scoreBar();document.querySelectorAll('.tabbar button').forEach(b=>b.setAttribute('aria-current',b.dataset.view===U.view))}
 function refreshGps(){const e=document.getElementById('gpsline');if(e)e.textContent=gpsLine()}
 function onPos(p){
   G.err='';G.acc=p.coords.accuracy;G.at=Date.now();G.pos=[p.coords.latitude,p.coords.longitude];const y=yardsTo([p.coords.latitude,p.coords.longitude],D[R.cur-1].gc);
@@ -145,6 +165,7 @@ document.addEventListener('click',async e=>{
   if(a.go){moveTo(Math.min(18,Math.max(1,R.cur+Number(a.go))));return}
   if(a.hole){U.view='hole';moveTo(Number(a.hole));return}
   if(a.club){U.sel=U.sel===a.club?null:a.club;U.f4=false;render();return}
+  if(a.coach){U.coach=a.coach;render();window.scrollTo(0,0);return}
   if(a.res){U.f4=false;shot(a.res);return}
   if(a.f4){U.f4=!U.f4;render();return}
   if(a.f4go){f4Go();return}
