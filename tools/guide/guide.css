@@ -1,0 +1,357 @@
+/* Layout: 1列の読み物。上に切り替え（ホール／番手／残り距離／コーチ）を固定し、下へ読み進める。 */
+:root {
+  --bg: #f8f7f6;
+  --surface: #ffffff;
+  --soft: #edebe8;
+  --fg: #23221e;
+  --muted: #706d65;
+  --line: #d6d3d0;
+  --accent: #0077c7;
+  --on-accent: #ffffff;
+  --accent-soft: #d9ebf7;
+  --warn: #b25e00;
+  --font: "Yu Gothic", YuGothic, "Hiragino Sans", "Noto Sans JP", sans-serif;
+  --r: 6px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1b1c1e;
+    --surface: #26282b;
+    --soft: #33363a;
+    --fg: #f0efed;
+    --muted: #aaa69f;
+    --line: #45474b;
+    --accent: #4db1f0;
+    --on-accent: #10242f;
+    --accent-soft: #1f3a4d;
+    --warn: #ffb84d;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #1b1c1e;
+  --surface: #26282b;
+  --soft: #33363a;
+  --fg: #f0efed;
+  --muted: #aaa69f;
+  --line: #45474b;
+  --accent: #4db1f0;
+  --on-accent: #10242f;
+  --accent-soft: #1f3a4d;
+  --warn: #ffb84d;
+  color-scheme: dark;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 1.6;
+  overflow-wrap: break-word;
+  padding-block: 0 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+/* 上に固定した帯の、さらに上（スマホの時計のあたり）をページの色で塗る */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0 0 auto;
+  height: env(safe-area-inset-top, 0px);
+  z-index: 10;
+  background: var(--bg);
+}
+button,
+select {
+  font: inherit;
+  color: inherit;
+}
+h1,
+h2,
+h3,
+p,
+dl,
+dd,
+ul,
+ol {
+  margin: 0;
+}
+a {
+  color: var(--accent);
+}
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.wrap {
+  max-width: 720px;
+  margin: 0 auto;
+  display: grid;
+  gap: 16px;
+}
+.top {
+  padding-top: 16px;
+  display: grid;
+  gap: 4px;
+}
+.top h1 {
+  font-size: 1.5rem;
+  line-height: 1.3;
+  text-wrap: balance;
+}
+.cap {
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+/* 切り替えの帯（スクロールしても上に残る） */
+.tabs {
+  position: sticky;
+  top: env(safe-area-inset-top, 0px);
+  z-index: 5;
+  background: var(--bg);
+  padding-block: 8px;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 4px;
+}
+.tabs a {
+  min-height: 44px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--surface);
+  color: var(--fg);
+  font-weight: 700;
+  font-size: 0.875rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.tabs a[aria-current="page"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+.pick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.pick button {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--surface);
+  font-weight: 700;
+  cursor: pointer;
+}
+.pick button[aria-pressed="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  padding: 12px;
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.h {
+  font-weight: 700;
+  font-size: 1rem;
+  line-height: 1.4;
+}
+.note {
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+h2 {
+  font-size: 1.15rem;
+  line-height: 1.4;
+}
+/* ホールの見出し：左に番号とパー、右にヤード */
+.holehead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+}
+.holehead .no {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+.holehead .par {
+  font-weight: 700;
+  color: var(--accent);
+}
+.yards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 0.8125rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.yards b {
+  color: var(--fg);
+}
+/* ホールの中身：左に簡易図、右に攻略の文。狭い画面では縦に並ぶ */
+.holebody {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+.holebody svg {
+  max-height: 220px !important;
+}
+@media (max-width: 420px) {
+  .holebody {
+    grid-template-columns: 88px minmax(0, 1fr);
+  }
+}
+dl {
+  display: grid;
+  gap: 2px;
+  font-size: 0.9375rem;
+}
+dt {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+dd {
+  margin: 0 0 6px;
+}
+dt.risk {
+  color: var(--warn);
+}
+.ghost {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--surface);
+  font-weight: 700;
+  cursor: pointer;
+}
+.pics {
+  display: grid;
+  gap: 6px;
+}
+.pics .seg {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 4px;
+  background: var(--soft);
+  padding: 4px;
+  border-radius: var(--r);
+}
+.pics .seg button {
+  min-height: 44px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  font-weight: 700;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+.pics .seg button[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.pics img {
+  display: block;
+  max-width: 100%;
+  max-height: 360px;
+  margin: 0 auto;
+  border-radius: var(--r);
+}
+.tblwrap {
+  overflow-x: auto;
+}
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.9375rem;
+  font-variant-numeric: tabular-nums;
+}
+th,
+td {
+  border-bottom: 1px solid var(--line);
+  padding: 6px 8px;
+  text-align: left;
+}
+th {
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+td.num,
+th.num {
+  text-align: right;
+}
+.two {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+.clubhead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.clubhead .name {
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+.clubhead .dist {
+  font-weight: 700;
+  color: var(--accent);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+ul.plain {
+  padding-left: 1.2em;
+  display: grid;
+  gap: 4px;
+}
+ol.plain {
+  padding-left: 1.4em;
+  display: grid;
+  gap: 4px;
+}
+.jump {
+  display: grid;
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+  gap: 4px;
+}
+/* 狭い画面では6列にして、指で押しやすい幅にする */
+@media (max-width: 480px) {
+  .jump {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+.jump button {
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--surface);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  padding: 0;
+}
+.hole {
+  scroll-margin-top: calc(env(safe-area-inset-top, 0px) + 68px);
+}
