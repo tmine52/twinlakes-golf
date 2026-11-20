@@ -70,7 +70,7 @@ function scoreView() {
     histBox();
 }
 
-/** 結果を送る欄（コピー・共有・上達道場） */
+/** 結果を送る欄（コピー・共有） */
 function exportBox() {
   return (
     '<section class="card"><div class="h">結果を送る</div>' +
@@ -80,13 +80,6 @@ function exportBox() {
     ) +
     note("ホールごとの打数・パットと、全ショットの記録をまとめます。スクリーンショットは不要です。") +
     (U.rtext ? textBox("rtext", resultText(), "結果") : "") +
-    '<div class="h">上達道場へ渡す</div>' +
-    linkButton(DOJO_URL, "上達道場を開く（通信が必要）", ' data-dojo="1"') +
-    note(
-      "上達道場の「記録」→「ラウンド」→「攻略アプリから受け取る」を押すと、貼り付けなしでラウンドを渡せます。" +
-        "このスマホのChromeで上達道場を開いた時に使えます。" +
-        "先に下の「履歴に保存」を押しておくと、あとからでも渡せます。",
-    ) +
     "</section>"
   );
 }

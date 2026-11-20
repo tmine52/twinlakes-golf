@@ -1,0 +1,8 @@
+# データのファイルは、1ホールを数行にまとめた手書きの形を保つ
+js/courses.js
+js/advice.js
+images.js
+# v28 までの本体（前の版そのまま。1文字も変えない）
+app.js
+# テスト用の、前の版の控え
+tests/fixtures

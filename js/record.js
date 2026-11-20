@@ -9,15 +9,59 @@ function startRound() {
   if (!R.rdate) R.rdate = ymd();
 }
 
-/** 1打を記録する（res: ok=普通 / short=短い / ob=OB・池） */
-function shot(res) {
+/*
+ * 1打の入れ方（v30）
+ *   1. 打つ前に番手を押す … その番手で1打を記録する（打数が1つ増える）
+ *   2. ボールに着いたら「到着」を押す … 打った場所からの距離（実測）を記録する
+ *   3. OB・池・ロスト・空振りのときだけ、結果のボタンを押す（押さなければ、ふつうに打てた1打）
+ * 押しまちがえた番手は、すぐ（SWAP_MS の間）に別の番手を押せば入れ替わる。
+ * 前の打を直すときは、打の一覧からその打を押す（番手・結果を直す、消す）。
+ */
+
+/** 番手を押し直したとき、打を増やさずに番手を入れ替える時間（ミリ秒）。自動テストは 0 にする */
+const SWAP_MS = window.__SWAP_MS != null ? window.__SWAP_MS : 20000;
+
+/** 結果のボタン（OB・池・ロスト・空振り）。押さなければ「ふつうに打てた」 */
+const RESULTS = [
+  ["ob", "OB"],
+  ["pond", "池"],
+  ["lost", "ロスト"],
+  ["miss", "空振り"],
+];
+
+/** そのホールの最後の打が、まだボールに着いていない（到着を押していない）ふつうの打か */
+function openShot(h) {
+  const s = h.shots[h.shots.length - 1];
+  return s && s.r === "ok" && h.arr !== h.shots.length && !h.green ? s : null;
+}
+
+/** 番手を押したとき：1打を記録する。押しまちがいの直後なら、番手を入れ替えるだけにする */
+function clubTap(name) {
   const n = R.cur,
     h = H(n),
-    c = R.clubs.find((x) => x.name === U.sel);
+    c = R.clubs.find((x) => x.name === name);
   if (!c) return;
+  const o = openShot(h),
+    p = fixPos();
+  const moved = o && p && o.from && yardsTo(p, o.from) > 15; // 打った場所から歩いて離れた
+  if (o && o.at && Date.now() - o.at < SWAP_MS && !moved) {
+    if (o.c !== name) {
+      o.c = name;
+      if (!p) h.rem = Math.max(0, o.before - eff(c, { lie: o.lie })); // GPSが無いときの残りの目安
+      save();
+      render();
+      say(h.shots.length + "打目を" + name + "に変えました。", 2500);
+    }
+    return;
+  }
+  shot(c);
+}
+
+/** 1打を記録する（番手 c で、ふつうに打てた1打として） */
+function shot(c) {
+  const n = R.cur,
+    h = H(n);
   const r = rem(n);
-  let nr = r,
-    pen = 0;
   const e = eff(c, h),
     k = lieOf(h),
     p = fixPos(),
@@ -36,14 +80,11 @@ function shot(res) {
     from = h.anc;
     if (h.ancRem != null) bf = h.ancRem;
   }
-  if (res === "ok") nr = late ? r : Math.max(0, r - e);
-  else if (res === "short") nr = late ? r : Math.max(0, r - Math.round(e / 2));
-  else pen = 1;
   startRound();
-  h.shots.push({ c: c.name, r: res, pen, before: bf, lie: k, from });
-  h.rem = nr;
+  h.shots.push({ c: c.name, r: "ok", pen: 0, before: bf, lie: k, from, at: Date.now() });
+  h.rem = late ? r : Math.max(0, r - e);
   h.lie = "fw";
-  U.sel = null;
+  U.edit = null;
   save();
   render();
   window.scrollTo(0, 0);
@@ -54,18 +95,107 @@ function shot(res) {
     );
 }
 
-/** 空振りを記録する */
-function miss() {
-  const n = R.cur,
-    h = H(n),
-    r = rem(n);
+/** ボールに着いた（到着）。打った場所からの距離を記録する。lie を渡すと球の場所も変える */
+function arrive(h, lie) {
+  if (lie) h.lie = lie;
+  h.arr = h.shots.length;
+  markBall(h);
+  const p = fixPos();
+  if (p) {
+    h.anc = p;
+    h.ancN = h.shots.length;
+    h.ancRem = rem(R.cur);
+  }
+}
+
+/**
+ * i打目（0から数える）の結果を付ける。k: ob / pond / lost / miss。
+ * 同じ結果をもう一度押すと取り消す（ふつうに打てた1打に戻す）。
+ * OB・池・ロストは1打罰で、次は同じ場所から打つ扱い。空振りは打数1・距離0。
+ */
+function setResult(i, k) {
+  const h = H(R.cur),
+    s = h.shots[i];
+  if (!s || s.r === "add" || s.r === "f4") return;
+  const cur = s.r === "ob" ? s.k || "ob" : s.r === "miss" ? "miss" : null;
+  const last = i === h.shots.length - 1;
+  delete s.to;
+  delete s.dist;
+  delete s.k;
+  if (cur === k) {
+    // 取り消し：ふつうに打てた1打に戻す
+    s.r = "ok";
+    s.pen = 0;
+    if (last) {
+      const c = R.clubs.find((x) => x.name === s.c);
+      if (!fixPos() && c) h.rem = Math.max(0, s.before - eff(c, { lie: s.lie }));
+      if (h.arr === h.shots.length) h.arr = null;
+      h.lie = "fw";
+    }
+    say(i + 1 + "打目の結果を取り消しました。", 2500);
+  } else {
+    s.r = k === "miss" ? "miss" : "ob";
+    s.pen = k === "miss" ? 0 : 1;
+    if (k !== "miss") s.k = k;
+    if (last) {
+      h.rem = s.before; // 同じ場所から打ち直す
+      h.lie = s.lie || "fw";
+      h.arr = h.shots.length;
+    }
+    say(i + 1 + "打目を「" + resLabel(s) + "」にしました" + (s.pen ? "（1打罰）" : "") + "。", 2500);
+  }
   startRound();
-  h.shots.push({ c: U.sel || "-", r: "miss", pen: 0, before: r, lie: lieOf(h) });
-  h.rem = r;
-  U.sel = null;
   save();
   render();
-  window.scrollTo(0, 0);
+}
+
+/** i打目（0から数える）を消す */
+function delShot(i) {
+  const h = H(R.cur),
+    s = h.shots[i];
+  if (!s) return;
+  const last = i === h.shots.length - 1;
+  h.shots.splice(i, 1);
+  if (last) {
+    h.rem = s.before;
+    h.lie = s.lie || "fw";
+  }
+  if (h.arr != null && h.arr > i) h.arr = Math.min(h.arr - 1, h.shots.length);
+  if (h.ancN != null && h.ancN > i) h.ancN--;
+  U.edit = null;
+  save();
+  render();
+  say(i + 1 + "打目を消しました（今 " + strokes(h) + "打）。", 3000);
+}
+
+/** i打目（0から数える）の番手を直す */
+function editClub(i, name) {
+  const h = H(R.cur),
+    s = h.shots[i],
+    c = R.clubs.find((x) => x.name === name);
+  if (!s || !c) return;
+  s.c = name;
+  if (s.r === "add") s.r = "ok"; // 番手なしの1打に、番手を付けた
+  if (i === h.shots.length - 1 && s.r === "ok" && !fixPos())
+    h.rem = Math.max(0, s.before - eff(c, { lie: s.lie }));
+  save();
+  render();
+  say(i + 1 + "打目を" + name + "に直しました。", 2500);
+}
+
+/** グリーンに乗ったとき：ティーからここまでのショットの数を、d（+1 / -1）だけ直す */
+function adjustShots(h, d) {
+  if (d > 0) {
+    startRound();
+    h.shots.push({ c: "-", r: "add", pen: 0, before: rem(R.cur), lie: lieOf(h) });
+    h.arr = h.shots.length;
+  } else {
+    if (!h.shots.length) return;
+    h.shots.pop();
+    if (h.arr != null && h.arr > h.shots.length) h.arr = h.shots.length;
+  }
+  save();
+  render();
 }
 
 /**
@@ -77,7 +207,8 @@ function addStroke() {
     h = H(n);
   startRound();
   h.shots.push({ c: "-", r: "add", pen: 0, before: rem(n), lie: lieOf(h) });
-  U.sel = null;
+  h.arr = h.shots.length;
+  U.edit = null;
   save();
   render();
 }
@@ -89,9 +220,12 @@ function f4T(n) {
   return D[n - 1].p === 3 ? 3 : 4;
 }
 
-/** 前進ティーを使える状態か（1打目だけ） */
+/** 前進ティーを使える状態か（ティーショットを記録した直後だけ。空振りは数えない） */
 function f4Open(n) {
-  return H(n).shots.every((x) => x.r === "miss");
+  const h = H(n),
+    real = h.shots.filter((x) => x.r !== "miss"),
+    last = h.shots[h.shots.length - 1];
+  return real.length === 1 && last === real[0] && (last.r === "ok" || last.r === "ob") && !h.green;
 }
 
 /** 前進ティーへ進む（打数を合わせ、残り距離を入れ直す） */
@@ -104,10 +238,12 @@ function f4Go() {
     say("0から700までの数字を入力してください。", 3000);
     return;
   }
-  const t = f4T(n);
+  const t = f4T(n),
+    tee = h.shots.pop(); // ティーショット（番手を押した打）を、前進の記録に置きかえる
+  h.rem = tee.before;
   startRound();
   h.shots.push({
-    c: U.sel,
+    c: tee.c,
     r: "f4",
     pen: Math.max(0, t - 2 - strokes(h)),
     before: rem(n),
@@ -117,7 +253,7 @@ function f4Go() {
   });
   h.rem = Math.round(v);
   h.lie = "fw";
-  U.sel = null;
+  h.arr = h.shots.length;
   U.f4 = false;
   save();
   render();
@@ -129,7 +265,7 @@ function f4Go() {
 /** n番へ移る */
 function moveTo(n) {
   R.cur = n;
-  U.sel = null;
+  U.edit = null;
   U.pic = "map";
   G.y = null;
   G.direct = null;

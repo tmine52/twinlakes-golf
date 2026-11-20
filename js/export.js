@@ -2,9 +2,6 @@
  * 書き出し：結果を送る文、研究用のコピー、記録の控え（書き出し・読み込み）
  */
 
-/* 上達道場（練習用のアプリ）の場所。スコア画面の「上達道場を開く」が開く */
-const DOJO_URL = "https://claude.ai/artifact/22QxHV7noL4jDe2EWfLJc8";
-
 /* ---- ラウンドの結果を文にする ---- */
 
 /**
@@ -276,6 +273,7 @@ function cleanShot(s, withHole) {
   if (dir) o.dir = dir;
   if (hit) o.hit = hit;
   if (s.r === "f4") o.t = cleanInt(s.t, 3, 4) || 4;
+  if (s.r === "ob" && OB_KIND[s.k]) o.k = s.k; // OB・池・ロストの別（v30 から）
   return o;
 }
 

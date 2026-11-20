@@ -12,8 +12,10 @@
  *   1打の記録
  *         { c: 番手, r: 結果, pen: 罰打, before: 打つ前の残り, lie: 打った場所,
  *           from / to: 打った場所 / 止まった場所の緯度経度, dist: 実測の飛距離,
- *           dir: 方向の感触, hit: 当たりの感触 }
- *   結果 r  ok=普通  short=短い  ob=OB・池  miss=空振り  f4=前進ティー  add=番手を選ばず足した1打
+ *           dir: 方向の感触, hit: 当たりの感触, k: 1打罰の種類（ob / pond / lost）, at: 番手を押した時刻 }
+ *   結果 r  ok=ふつうに打てた  short=短い（v29 まで）  ob=OB・池・ロスト（1打罰）  miss=空振り
+ *           f4=前進ティー  add=番手を選ばず足した1打
+ *   h.arr  ボールに着いた（到着を押した）ときの打の数。最後の打が到着済みかを見るのに使う
  */
 
 /* ---- 保存場所 ---- */
@@ -57,7 +59,7 @@ const SK = DEMO ? KEY + "-demo" : KEY; // 今、読み書きする保存場所
 const SIM = { r: null, n: null }; // お試しの立つ場所（r: 道のりでの残りヤード, n: どのホールの分か）
 
 /* ---- 状態 ---- */
-const U = { view: "hole", sel: null, arm: false };
+const U = { view: "hole", edit: null, arm: false }; // edit: 直している打（0から数える）
 
 let R = {
   cv: CV,
@@ -77,10 +79,13 @@ const LIE = { fw: "FW", light: "浅いラフ", deep: "深いラフ", bunker: "�
 const DIR = { left: "左", straight: "まっすぐ", right: "右" };
 const HIT = { good: "芯", fat: "ダフリ", top: "トップ", shank: "シャンク" };
 const RES = { ok: "普通", short: "短い", ob: "OB・池", miss: "空振り", add: "1打（番手なし）" };
+const OB_KIND = { ob: "OB", pond: "池", lost: "ロスト" }; // 1打罰の結果の種類（v30 から。shots[].k）
 
 /** 1打の結果を、画面に出す言葉にする */
 function resLabel(s) {
-  return s.r === "f4" ? "前進" + (s.t || 4) + "打" : RES[s.r] || s.r;
+  if (s.r === "f4") return "前進" + (s.t || 4) + "打";
+  if (s.r === "ob" && s.k) return OB_KIND[s.k] || RES.ob;
+  return RES[s.r] || s.r;
 }
 
 /** HTMLの中に入れても安全な文字に直す */

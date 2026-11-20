@@ -103,18 +103,10 @@ const ACT = {
     save();
     render();
   },
-  undo(h) {
-    const s = h.shots.pop();
-    if (s) {
-      h.rem = s.before;
-      h.lie = s.lie || "fw";
-    }
-    save();
-    render();
-  },
   green(h) {
-    markBall(h);
+    arrive(h); // 最後の打の止まった場所（＝グリーン）を記録する
     h.green = true;
+    U.edit = null;
     save();
     render();
     window.scrollTo(0, 0);
@@ -157,6 +149,7 @@ const ACT = {
 function disarm() {
   U.arm = U.hnew = U.hslim = U.cdel = U.bkArm = false;
   U.hdel = null;
+  U.edit = null; // 直している打
 }
 
 /** 押されたボタンごとの処理。名前は data-◯◯ の ◯◯。a はボタンに付けた目印の一覧 */
@@ -211,18 +204,51 @@ const ON_CLICK = {
     moveTo(Number(a.hole));
   },
 
-  /* 1打の記録 */
+  /* 1打の記録（打つ前に番手を押す → ボールに着いたら「到着」） */
   club(a) {
-    U.sel = U.sel === a.club ? null : a.club;
     U.f4 = false;
-    render();
+    if (U.edit != null) editClub(U.edit, a.club);
+    else clubTap(a.club);
   },
   res(a) {
+    // OB・池・ロスト・空振り。直している打があればその打、無ければ最後の打に付ける
+    const h = H(R.cur);
     U.f4 = false;
-    shot(a.res);
+    setResult(U.edit != null ? U.edit : h.shots.length - 1, a.res);
   },
-  miss() {
-    miss();
+  arrive() {
+    const h = H(R.cur),
+      s = h.shots[h.shots.length - 1];
+    arrive(h);
+    save();
+    render();
+    window.scrollTo(0, 0);
+    say(
+      s && s.dist
+        ? "到着：" + s.c + " " + s.dist + "Y（実測）"
+        : "到着を記録しました" +
+            (fixPos() ? "（距離は測れませんでした）" : "（GPSがオフなので距離は測っていません）"),
+      3500,
+    );
+  },
+  ed(a) {
+    // 打の一覧で押した打を、直す対象にする（もう一度押すと直し終わる）
+    const i = Number(a.ed);
+    U.edit = U.edit === i ? null : i;
+    U.f4 = false;
+    render();
+    const c = U.edit != null && document.querySelector(".card:has(.clubs)");
+    if (c) c.scrollIntoView({ block: "start" }); // 直す画面を見えるところへ
+  },
+  edend() {
+    U.edit = null;
+    render();
+  },
+  del() {
+    if (U.edit != null) delShot(U.edit);
+  },
+  gs(a) {
+    adjustShots(H(R.cur), Number(a.gs));
   },
   add() {
     addStroke();
@@ -242,17 +268,8 @@ const ON_CLICK = {
     setFeel("hit", a.fh);
   },
   lie(a) {
-    // 球の場所を押す＝球に着いた合図。前の1打の飛距離を確定し、この場所を覚える
-    const h = H(R.cur);
-    h.lie = a.lie;
-    h.arr = h.shots.length;
-    markBall(h);
-    const p = fixPos();
-    if (p) {
-      h.anc = p;
-      h.ancN = h.shots.length;
-      h.ancRem = rem(R.cur);
-    }
+    // 球の場所を押す（まだ到着を押していなければ、到着の合図も兼ねる）
+    arrive(H(R.cur), a.lie);
     save();
     render();
   },

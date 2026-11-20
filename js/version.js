@@ -5,8 +5,8 @@
  * 画面の表示と、保存係（sw.js）の両方が、この値を読みます。
  */
 const APP_NAME = "ゴルフ攻略";
-const APP_VER = "v29";
-const APP_DATE = "2026-11-18";
+const APP_VER = "v30";
+const APP_DATE = "2026-11-20";
 
 /* ホールの画像（images.js）の版。images.js を作り直したときだけ上げます。 */
 const IMG_REV = "1";

@@ -165,7 +165,7 @@ function setCourse(id) {
   applyCourse();
   G.y = null;
   G.direct = null;
-  U.sel = null;
+  U.edit = null;
   save();
   say(
     "「" +

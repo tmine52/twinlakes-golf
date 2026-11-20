@@ -157,7 +157,7 @@ function refreshGps() {
   if (e) e.textContent = gpsLine();
   if (
     U.view === "hole" &&
-    !U.sel &&
+    U.edit == null &&
     !/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName) &&
     (!U.mt || Date.now() - U.mt > 15000)
   ) {
@@ -202,7 +202,11 @@ function onPos(p) {
       h.rem = y;
       save();
       // 入力中・選択中は描き直さない（入力が消えたり、選択欄が閉じたりするため）
-      if (!U.sel && document.activeElement.id !== "fix" && !/^(pick|csel2)$/.test(document.activeElement.id))
+      if (
+        U.edit == null &&
+        document.activeElement.id !== "fix" &&
+        !/^(pick|csel2)$/.test(document.activeElement.id)
+      )
         render();
       return;
     }

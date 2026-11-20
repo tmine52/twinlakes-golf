@@ -172,7 +172,7 @@ RETRY = 1 if os.environ.get("CI") else 0  # GitHub の中でだけ、失敗し�
 class App:
     """1つのブラウザ画面（スマホ1台ぶん）。"""
 
-    def __init__(self, browser, base, pos=None, width=390, height=760, sw="block", dark=False):
+    def __init__(self, browser, base, pos=None, width=390, height=760, sw="block", dark=False, swap=0):
         perms = ["clipboard-read", "clipboard-write"]
         kw = dict(viewport={"width": width, "height": height}, service_workers=sw,
                   color_scheme="dark" if dark else "light")
@@ -182,6 +182,8 @@ class App:
         kw["permissions"] = perms
         self.base = base
         self.ctx = browser.new_context(**kw)
+        # 番手を続けて押したとき、入れ替えにせず毎回1打として記録する（本番は20秒以内なら入れ替え）
+        self.ctx.add_init_script("window.__SWAP_MS = %d" % swap)
         self.g = self.ctx.new_page()
         self.errors = []
         self.g.on("pageerror", lambda e: self.errors.append(str(e)))
@@ -268,8 +270,17 @@ class App:
         self.tap('.tabbar [data-view="%s"]' % name, wait=100)
 
     def hit(self, club, res="ok"):
-        """番手を選んで結果を押す（1打を記録）。"""
-        self.tap('button[data-club="%s"]' % club, 'button[data-res="%s"]' % res, wait=120)
+        """番手を押して1打を記録する。res が ok 以外（ob / pond / lost / miss）なら、その結果も押す。"""
+        self.tap('button[data-club="%s"]' % club, wait=120)
+        if res == "ok" and self.count('button[data-res="ok"]'):
+            self.tap('button[data-res="ok"]', wait=120)  # 前の版（v29 まで）の画面は、番手のあとに結果を押す
+        elif res != "ok":
+            self.tap('button[data-res="%s"]' % res, wait=120)
+
+    def undo(self):
+        """最後の打を消す（打の一覧で最後の打を押す → 「この打を消す」）。"""
+        n = self.count(".log [data-ed]")
+        self.tap('.log [data-ed="%d"]' % (n - 1), "[data-del]", wait=100)
 
     def move(self, pos, acc=8, wait=1400):
         """にせものの現在地を動かす。"""
@@ -633,7 +644,7 @@ def gps_measure_and_late_press(b, base):
     """GPSの残り距離・実測飛距離と、押し遅れのときの守り（ツインレイクス1番）"""
     a = App(b, base, pos=TW_T1).open()
     a.tap('[data-act="gps"]', wait=900)
-    check("ティーではティーショットの案内", "ティーショットを記録" in a.text(".card:has(.clubs) .h"), a.text("#gpsline"))
+    check("ティーではティーショットの案内", "ティーショット" in a.text(".card:has(.clubs) .h"), a.text("#gpsline"))
     a.move(TW_M1)
     a.hit("1W")
     s = a.js("R.holes[1]")
@@ -657,7 +668,7 @@ def gps_measure_and_late_press(b, base):
     a.move(TW_M1)
     a.tap('[data-lie="fw"]', wait=100)
     check("ありえない飛距離（SWで175Y）は捨てる", "dist" not in a.js("R.holes[1].shots[0]"))
-    a.tap('[data-act="undo"]', wait=100)
+    a.undo()
     a.move(TW_T1)
     a.hit("1W")
     a.move(TW_M1)
@@ -698,7 +709,7 @@ def tamagawa_round(b, base):
     check("履歴は残る", a.js("R.hist.length") == 1)
     check("GPSなし：ティーの番手と狙い", a.text(".sug .c") == "1W" and "3〜4回で運ぶ" in a.text(".sug .n") and a.text(".rem") == "516Y", a.sug())
     a.tap('[data-act="gps"]', wait=900)
-    check("GPSあり：ティーにいる間はティーの案内のまま", a.text(".sug .c") == "1W" and "ティーショットを記録" in a.text(".card:has(.clubs) .h"),
+    check("GPSあり：ティーにいる間はティーの案内のまま", a.text(".sug .c") == "1W" and "ティーショット" in a.text(".card:has(.clubs) .h"),
           a.text("#gpsline") + " | " + a.sug())
     a.g.locator('[data-mapv="course"]').scroll_into_view_if_needed()
     a.tap('[data-mapv="course"]', wait=200)
@@ -708,7 +719,7 @@ def tamagawa_round(b, base):
     a.shot("tamagawa_course_map")
     a.tap('[data-mapv="hole"]', wait=100)
     a.move(TA_MID1)
-    check("歩いて離れると、刻む計画に変わる", "計画：" in a.sug() and "打目を記録" in a.text(".card:has(.clubs) .h"), a.sug())
+    check("歩いて離れると、刻む計画に変わる", "計画：" in a.sug() and "1打目" in a.text(".card:has(.clubs) .h"), a.sug())
     a.hit("1W")
     check("押し遅れの1打は実測しない", a.js("R.holes[1].shots[0].from") is None and a.js("R.holes[1].shots[0].before") == 516, a.status())
     # グリーンの位置を、その場で登録し直す
@@ -819,7 +830,7 @@ def lie_and_clubs(b, base):
     check("届かないラフは花道へ", "花道" in a.text(".sug .c"), a.sug())
     a.hit("7I")
     check("ラフから7I：残り85Y、球の場所はFWに戻る", a.text(".rem") == "85Y" and a.g.locator("[data-lie].act").inner_text() == "FW", a.text(".rem"))
-    a.tap('[data-act="undo"]', wait=100)
+    a.undo()
     check("1打戻すと残りと球の場所も戻る", a.text(".rem") == "200Y" and a.g.locator("[data-lie].act").inner_text() == "浅いラフ")
     at(150, "bunker")
     check("バンカーはSW", a.text(".sug .c") == "SWで出す" and "SW 30Y" in a.text(".clubs").replace("\n", " "), a.sug())
@@ -831,23 +842,82 @@ def lie_and_clubs(b, base):
 
 
 @test
+def stroke_input_v30(b, base):
+    """v30 の入れ方：打つ前に番手 → 到着、結果は OB・池・ロスト・空振りだけ、打の一覧から直す、グリーンで打数を合わせる"""
+    a = App(b, base, width=360, height=780, swap=20000).open()   # 本番と同じく、20秒以内の押し直しは入れ替え
+    st = lambda: a.js("strokes(H(1))")
+    check("打つ前は結果のボタンなし", a.count("[data-res]") == 0 and a.count("[data-arrive]") == 0)
+    a.tap('button[data-club="1W"]', wait=120)
+    check("番手を押すと1打目を記録", st() == 1 and a.js("H(1).shots[0].c") == "1W" and "2打目" in a.text(".card:has(.clubs) .h"))
+    check("「到着」ボタンが出る", a.count("[data-arrive]") == 1 and a.text("[data-res]").strip() != "")
+    check("結果は OB・池・ロスト・空振りの4つ（普通・短いは無い）",
+          [a.g.locator("[data-res]").nth(i).inner_text() for i in range(a.count("[data-res]"))] == ["OB", "池", "ロスト", "空振り"])
+    a.tap('button[data-club="3W"]', wait=120)
+    check("すぐ押し直すと入れ替わる（打数は増えない）", st() == 1 and a.js("H(1).shots[0].c") == "3W" and "3Wに変えました" in a.status(), a.status())
+    a.tap("[data-arrive]", wait=120)
+    check("到着を押すと、到着ボタンが消える", a.count("[data-arrive]") == 0 and a.js("H(1).arr") == 1 and "到着" in a.status(), a.status())
+    a.tap('button[data-club="7I"]', wait=120)
+    check("到着のあとの番手は、次の1打", st() == 2 and a.js("H(1).shots[1].c") == "7I")
+    rem_before = a.js("H(1).shots[1].before")
+    a.tap('[data-res="pond"]', wait=120)
+    check("池：1打罰、次は同じ場所から", st() == 3 and a.js("H(1).rem") == rem_before and "OB池1" in a.text("#scorebar")
+          and "池" in a.text(".log"), a.text(".log"))
+    a.tap('button[data-club="7I"]', wait=120)
+    check("池のあとの番手は、次の1打（入れ替えにしない）", st() == 4)
+    a.tap('[data-res="miss"]', wait=120)
+    check("空振り：打数はそのまま、距離0", st() == 4 and a.js("H(1).shots[2].r") == "miss" and "空振り1" in a.text("#scorebar"))
+    a.tap('button[data-club="SW"]', wait=120)
+    check("空振りのあとの番手は、次の1打", st() == 5)
+    # 打の一覧から2打目を直す
+    a.tap('.log [data-ed="1"]', wait=120)
+    check("2打目を押すと、2打目を直す画面", "2打目を直す" in a.text(".card:has(.clubs) .h") and a.count("[data-del]") == 1)
+    a.tap('button[data-club="8I"]', wait=120)
+    check("番手を直せる（打数は変わらない）", a.js("H(1).shots[1].c") == "8I" and st() == 5)
+    a.tap('[data-res="pond"]', wait=120)
+    check("池を取り消せる", a.js("H(1).shots[1].r") == "ok" and st() == 4)
+    a.tap('[data-res="lost"]', wait=120)
+    check("ロストにできる", a.js("H(1).shots[1].k") == "lost" and st() == 5 and "ロスト" in a.text(".log"))
+    a.tap("[data-edend]", wait=120)
+    check("直し終わると、次の打の画面に戻る", "6打目" in a.text(".card:has(.clubs) .h") and a.count("[data-del]") == 0,
+          a.text(".card:has(.clubs) .h"))
+    a.tap('.log [data-ed="2"]', "[data-del]", wait=120)
+    check("3打目（空振り）を消せる", a.js("H(1).shots.length") == 3 and st() == 4 and "空振り0" in a.text("#scorebar"))
+    # グリーン上で、ティーからグリーンまでの打数を合わせる
+    a.tap('[data-act="green"]', wait=120)
+    check("グリーン上に「ティーからグリーンに乗るまで」", "ティーからグリーンに乗るまで" in a.text("#app") and a.count('[data-gs="1"]') == 1)
+    a.tap('[data-gs="1"]', '[data-gs="1"]', wait=100)
+    check("＋で打数を足せる", st() == 6 and "ショット 6打" in a.text("#breakdown"), a.text("#breakdown"))
+    a.tap('[data-gs="-1"]', wait=100)
+    check("−で減らせる", st() == 5)
+    a.tap('[data-putt="1"]', '[data-putt="1"]', wait=80)
+    check("パットはこれまでどおり", st() == 7 and "パット 2打" in a.text("#breakdown"))
+    a.tap('.log [data-ed="0"]', wait=120)
+    check("グリーン上でも、前の打を直せる", "1打目を直す" in a.text(".card:has(.clubs) .h"))
+    a.tap("[data-edend]", wait=120)
+    check("直し終わるとパットの画面に戻る", a.count("#breakdown") == 1)
+    check("横にはみ出さない（幅360）", a.width_ok())
+    check("エラーなし", a.errors == [], a.errors)
+    a.close()
+
+
+@test
 def whiff_bunker_scorebar(b, base):
     """空振り・バンカー・OBの数え方と、上の帯（合計）の表示"""
     a = App(b, base, width=360, height=780).open()
     bar = lambda: a.text("#scorebar").replace("\n", " / ")
-    a.tap("[data-miss]")
+    a.hit("1W", "miss")
     check("ティーで空振り：1打、残りはそのまま", a.text(".rem") == "347Y" and "合計 1打" in bar() and "空振り1" in bar(), bar())
     a.hit("1W")
     a.tap('[data-lie="bunker"]')
-    a.tap("[data-miss]")
+    a.hit("SW", "miss")
     check("バンカーで空振り：球の場所はバンカーのまま", a.g.locator("[data-lie].act").inner_text() == "バンカー" and "空振り2" in bar(), bar())
     a.hit("SW")
     check("バンカーからの1打を数える", "バンカー2" in bar() and "（バンカー）" in a.text(".log"), bar() + " " + a.text(".log"))
-    a.tap('[data-act="undo"]')
-    check("1打戻す：球の場所もバンカーへ戻る", a.g.locator("[data-lie].act").inner_text() == "バンカー" and "バンカー1" in bar(), bar())
+    a.undo()
+    check("最後の打を消す：球の場所もバンカーへ戻る", a.g.locator("[data-lie].act").inner_text() == "バンカー" and "バンカー1" in bar(), bar())
     a.hit("SW")
     a.hit("AW", "ob")
-    check("OB・池は1打罰", a.js("strokes(H(1))") == 6 and "OB池1" in bar(), bar())
+    check("OBは1打罰", a.js("strokes(H(1))") == 6 and "OB池1" in bar(), bar())
     a.tap('[data-act="green"]', '[data-putt="1"]')
     check("パットを数える", "パット1" in bar() and "1番 7打" in bar(), bar())
     a.tab("advice")
@@ -877,7 +947,7 @@ def forward_tee(b, base):
     a.tap("[data-f4go]", wait=80)
     check("前進4打：次が4打目、残り140Y", a.text(".rem") == "140Y" and a.js("strokes(H(1))") == 3 and "前進4打" in a.text(".log")
           and "OB池1" in a.text("#scorebar"), a.text("#scorebar"))
-    a.tap('[data-act="undo"]')
+    a.undo()
     check("1打戻すと元どおり", a.text(".rem") == "347Y" and a.js("strokes(H(1))") == 0)
     a.tap('[data-go="1"]')
     a.tap('button[data-club="5W"]')
@@ -907,7 +977,7 @@ def feel_and_csv(b, base):
     a.hit("7I")
     a.tap('[data-fd="straight"]', '[data-fh="good"]')
     a.tap('[data-go="1"]', '[data-go="1"]')
-    a.hit("1W", "short")
+    a.hit("1W")
     a.tap('[data-fd="right"]')
     a.tab("score")
     rows = a.text(".card:has([data-csv]) tbody").replace("\t", " ").split("\n")
@@ -1093,16 +1163,16 @@ def add_stroke_and_putts(b, base):
     """ショットとパットを分けて数える（番手なしの1打、内訳、かんたん入力のパット）"""
     a = App(b, base).open()
     a.tap("[data-add]")
-    check("番手なしで1打足す：1打になり、次は2打目", a.js("strokes(H(1))") == 1 and "2打目を記録" in a.text(".card:has(.clubs) .h")
+    check("番手なしで1打足す：1打になり、次は2打目", a.js("strokes(H(1))") == 1 and "2打目" in a.text(".card:has(.clubs) .h")
           and "1打（番手なし）" in a.text(".log") and "番手なしで1打足しました" in a.status(), a.text(".log"))
     check("番手別の集計には入れない", a.js("curShots().length") == 0 and a.count("[data-fd]") == 0)
-    a.tap('[data-act="undo"]')
+    a.undo()
     check("1打戻せる", a.js("strokes(H(1))") == 0)
     a.hit("1W")
     a.tap("[data-add]")
     a.tap('[data-act="green"]', '[data-putt="1"]', '[data-putt="1"]')
     check("グリーン上に内訳を出す", a.text("#breakdown") == "内訳：ショット 2打 ＋ パット 2打 ＝ 4打", a.text("#breakdown"))
-    a.tap(".card:has(#breakdown) [data-add]")
+    a.tap('[data-gs="1"]')
     check("グリーン上からショットを1打足せる", a.text("#breakdown") == "内訳：ショット 3打 ＋ パット 2打 ＝ 5打" and a.js("H(1).green") is True, a.text("#breakdown"))
     a.tab("score")
     a.tap("[data-rcopy]", wait=200)
@@ -1369,7 +1439,7 @@ def result_text_for_dojo(b, base):
     a.tap('[data-lie="bunker"]')
     a.hit("SW")
     a.hit("AW", "ob")
-    a.tap("[data-miss]")
+    a.hit("AW", "miss")
     a.tap('[data-act="green"]', '[data-putt="1"]', '[data-putt="1"]')
     check("打ち始めた日を覚える", a.js("R.rdate") == a.js("ymd()"))
     a.js("()=>{R.rdate='2026-11-21';save()}")                 # ラウンドは11/21、結果を送るのは後日、という場面
@@ -1382,7 +1452,7 @@ def result_text_for_dojo(b, base):
     check("ホールの表", L[3] == "H,Par,打数,ショット,パット,バンカー,空振り,OB池" and L[4] == "1,5,7,5,2,1,1,1", L[3:5])
     i = L.index("[ショット]")
     check("ショットの表（空振りは入れない）", L[i + 1] == "ホール,番手,結果,残り,球の場所,方向,当たり,実測Y" and L[i + 2:] ==
-          ["1,1W,普通,516,FW,,,", "1,SW,普通,336,バンカー,,,", "1,AW,OB・池,306,FW,,,"], L[i + 1:])
+          ["1,1W,普通,516,FW,,,", "1,SW,普通,336,バンカー,,,", "1,AW,OB,306,FW,,,"], L[i + 1:])
     a.tap("[data-hsave]", wait=80)
     check("履歴の日付もラウンドの日", a.js("R.hist[0].date") == "2026-11-21" and a.js("R.hist[0].rows[0]") ==
           {"n": 1, "p": 5, "s": 7, "sh": 5, "pt": 2, "bk": 1, "ms": 1, "ob": 1} and a.js("R.hist[0].teeName") == "White", a.js("JSON.stringify(R.hist[0].rows)"))
