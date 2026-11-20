@@ -204,48 +204,70 @@ const ON_CLICK = {
     moveTo(Number(a.hole));
   },
 
-  /* 1打の記録（打つ前に番手を押す → ボールに着いたら「到着」） */
+  /* 1打の記録（◀ ▶ で何打目かを選ぶ → 番手 → 到着。OB・池・ロスト・空振りは結果のボタン） */
   club(a) {
     U.f4 = false;
-    if (U.edit != null) editClub(U.edit, a.club);
-    else clubTap(a.club);
+    clubTap(a.club);
   },
   res(a) {
-    // OB・池・ロスト・空振り。直している打があればその打、無ければ最後の打に付ける
-    const h = H(R.cur);
     U.f4 = false;
-    setResult(U.edit != null ? U.edit : h.shots.length - 1, a.res);
+    setResult(slotOf(H(R.cur)), a.res);
   },
   arrive() {
     const h = H(R.cur),
-      s = h.shots[h.shots.length - 1];
+      i = h.shots.length - 1,
+      s = h.shots[i];
     arrive(h);
+    U.edit = null;
     save();
     render();
-    window.scrollTo(0, 0);
     say(
-      s && s.dist
-        ? "到着：" + s.c + " " + s.dist + "Y（実測）"
-        : "到着を記録しました" +
-            (fixPos() ? "（距離は測れませんでした）" : "（GPSがオフなので距離は測っていません）"),
+      strokeNo(h, i) +
+        "打目 到着" +
+        (s && s.dist
+          ? "：" + s.c + " " + s.dist + "Y（実測）"
+          : fixPos()
+            ? "（距離は測れませんでした）"
+            : "（GPSがオフなので距離は測っていません）") +
+        "。次は " +
+        strokeNo(h, h.shots.length) +
+        "打目です。",
       3500,
     );
   },
+  sk(a) {
+    // ◀ ▶：何打目を入力するかを選ぶ
+    const h = H(R.cur),
+      i = slotOf(h),
+      d = Number(a.sk);
+    U.f4 = false;
+    if (d < 0) U.edit = Math.max(0, i - 1);
+    else if (i >= h.shots.length) return;
+    else if (h.shots[i] === openShot(h)) {
+      arrive(h); // 到着を押さずに次へ：今いる場所を到着にする
+      U.edit = null;
+    } else U.edit = i + 1;
+    save();
+    render();
+    const c = document.getElementById("strokecard");
+    if (c) c.scrollIntoView({ block: "start" });
+  },
   ed(a) {
-    // 打の一覧で押した打を、直す対象にする（もう一度押すと直し終わる）
-    const i = Number(a.ed);
-    U.edit = U.edit === i ? null : i;
+    // 記録した打の一覧で押した打へ移る
+    U.edit = Number(a.ed);
     U.f4 = false;
     render();
-    const c = U.edit != null && document.querySelector(".card:has(.clubs)");
-    if (c) c.scrollIntoView({ block: "start" }); // 直す画面を見えるところへ
+    const c = document.getElementById("strokecard");
+    if (c) c.scrollIntoView({ block: "start" });
   },
   edend() {
     U.edit = null;
     render();
   },
   del() {
-    if (U.edit != null) delShot(U.edit);
+    const h = H(R.cur),
+      i = slotOf(h);
+    if (h.shots[i]) delShot(i);
   },
   gs(a) {
     adjustShots(H(R.cur), Number(a.gs));

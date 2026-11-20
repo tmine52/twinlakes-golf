@@ -10,16 +10,14 @@ function startRound() {
 }
 
 /*
- * 1打の入れ方（v30）
- *   1. 打つ前に番手を押す … その番手で1打を記録する（打数が1つ増える）
- *   2. ボールに着いたら「到着」を押す … 打った場所からの距離（実測）を記録する
- *   3. OB・池・ロスト・空振りのときだけ、結果のボタンを押す（押さなければ、ふつうに打てた1打）
- * 押しまちがえた番手は、すぐ（SWAP_MS の間）に別の番手を押せば入れ替わる。
- * 前の打を直すときは、打の一覧からその打を押す（番手・結果を直す、消す）。
+ * 1打の入れ方（v31）
+ *   ◀ ▶ で「何打目」を選び、その打の番手を押す。
+ *   ・新しい打（まだ記録していない打目）で番手を押す … その番手で1打を記録する
+ *   ・記録ずみの打で番手を押す … その打の番手を直す（打数は増えない）
+ *   ・ボールに着いたら「到着」… 打った場所からの距離（実測）を記録し、次の打目へ進む
+ *   ・OB・池・ロスト・空振りのときだけ、結果のボタンを押す（押すと次の打目へ進む）
+ *   U.edit … ◀ ▶ で選んでいる打（0から数える）。null のときは自動（到着前の打、無ければ次の新しい打）
  */
-
-/** 番手を押し直したとき、打を増やさずに番手を入れ替える時間（ミリ秒）。自動テストは 0 にする */
-const SWAP_MS = window.__SWAP_MS != null ? window.__SWAP_MS : 20000;
 
 /** 結果のボタン（OB・池・ロスト・空振り）。押さなければ「ふつうに打てた」 */
 const RESULTS = [
@@ -35,26 +33,35 @@ function openShot(h) {
   return s && s.r === "ok" && h.arr !== h.shots.length && !h.green ? s : null;
 }
 
-/** 番手を押したとき：1打を記録する。押しまちがいの直後なら、番手を入れ替えるだけにする */
+/** 今入力している打（0から数える）。h.shots.length なら、まだ記録していない新しい打 */
+function slotOf(h) {
+  if (U.edit != null && U.edit >= 0 && U.edit <= h.shots.length) return U.edit;
+  return openShot(h) ? h.shots.length - 1 : h.shots.length;
+}
+
+/** i番目の打が「何打目」か（前の打の罰打も数える） */
+function strokeNo(h, i) {
+  let n = 1;
+  for (let j = 0; j < i && j < h.shots.length; j++) n += 1 + (h.shots[j].pen || 0);
+  return n;
+}
+
+/** 番手を押したとき：選んでいる打が新しい打なら1打を記録、記録ずみの打なら番手を直す */
 function clubTap(name) {
-  const n = R.cur,
-    h = H(n),
+  const h = H(R.cur),
     c = R.clubs.find((x) => x.name === name);
   if (!c) return;
-  const o = openShot(h),
+  const i = slotOf(h),
+    s = h.shots[i],
     p = fixPos();
-  const moved = o && p && o.from && yardsTo(p, o.from) > 15; // 打った場所から歩いて離れた
-  if (o && o.at && Date.now() - o.at < SWAP_MS && !moved) {
-    if (o.c !== name) {
-      o.c = name;
-      if (!p) h.rem = Math.max(0, o.before - eff(c, { lie: o.lie })); // GPSが無いときの残りの目安
-      save();
-      render();
-      say(h.shots.length + "打目を" + name + "に変えました。", 2500);
-    }
-    return;
+  if (!s) return shot(c);
+  // 到着を押し忘れて、次の球のところで番手を押した（GPSで30Y以上離れている）：前の打を到着にして、新しい打にする
+  if (s === openShot(h) && p && s.from && yardsTo(p, s.from) > 30) {
+    arrive(h);
+    say(strokeNo(h, i) + "打目を到着にして、次の打を記録しました。", 3000);
+    return shot(c);
   }
-  shot(c);
+  editClub(i, name);
 }
 
 /** 1打を記録する（番手 c で、ふつうに打てた1打として） */
@@ -132,7 +139,7 @@ function setResult(i, k) {
       if (h.arr === h.shots.length) h.arr = null;
       h.lie = "fw";
     }
-    say(i + 1 + "打目の結果を取り消しました。", 2500);
+    say(strokeNo(h, i) + "打目の結果を取り消しました。", 2500);
   } else {
     s.r = k === "miss" ? "miss" : "ob";
     s.pen = k === "miss" ? 0 : 1;
@@ -142,8 +149,9 @@ function setResult(i, k) {
       h.lie = s.lie || "fw";
       h.arr = h.shots.length;
     }
-    say(i + 1 + "打目を「" + resLabel(s) + "」にしました" + (s.pen ? "（1打罰）" : "") + "。", 2500);
+    say(strokeNo(h, i) + "打目を「" + resLabel(s) + "」にしました" + (s.pen ? "（1打罰）" : "") + "。", 2500);
   }
+  if (last) U.edit = null;
   startRound();
   save();
   render();
@@ -165,7 +173,7 @@ function delShot(i) {
   U.edit = null;
   save();
   render();
-  say(i + 1 + "打目を消しました（今 " + strokes(h) + "打）。", 3000);
+  say("消しました（今 " + strokes(h) + "打）。", 3000);
 }
 
 /** i打目（0から数える）の番手を直す */
@@ -180,7 +188,7 @@ function editClub(i, name) {
     h.rem = Math.max(0, s.before - eff(c, { lie: s.lie }));
   save();
   render();
-  say(i + 1 + "打目を" + name + "に直しました。", 2500);
+  say(strokeNo(h, i) + "打目を" + name + "にしました。", 2500);
 }
 
 /** グリーンに乗ったとき：ティーからここまでのショットの数を、d（+1 / -1）だけ直す */

@@ -15,15 +15,18 @@ function holeView() {
     holeNav(n) +
     nowCard(n, d, h) +
     gpsCard() +
-    // 打った直後は、感触の欄を上に出す（球に着いた合図を押すと下へ移る）
-    (!R.simple && feelTop(h) ? feelBox(h) : "") +
     suggestCard(n, h) +
-    (atTee(n) ? picCard(n) : "") +
-    (R.simple ? quickBox(n, h) : h.green && U.edit == null ? puttCard(n, h) : shotCard(n, h) + fixCard()) +
-    (!R.simple && !feelTop(h) ? feelBox(h) : "") +
-    (atTee(n) ? "" : picCard(n)) +
+    (R.simple ? quickBox(n, h) : h.green && U.edit == null ? puttCard(n, h) : shotCard(n, h)) +
+    (R.simple ? "" : feelBox(h)) +
+    picCard(n) +
+    (R.simple || h.green ? "" : fixCard()) +
     mapBox(n) +
-    hazardCard(d);
+    hazardCard(d) +
+    (DEMO
+      ? ""
+      : '<section class="card"><div class="h">操作の練習</div>' +
+        note("お試しモードでは、本番の記録を変えずに、番手・到着・OB などを試せます。") +
+        '<button class="ghost" data-demo="on" style="width:100%">お試しモードを始める</button></section>');
 }
 
 /** ホール画面のいちばん上の、コースの選択欄 */
@@ -115,20 +118,21 @@ function lieRow(n, h) {
   );
 }
 
-/** 1打を記録する枠（打つ前に番手を押す。直している打があれば、その打を直す） */
+/** 打数の入力（◀ ▶ で何打目かを選び、番手・結果・到着を押す） */
 function shotCard(n, h) {
-  const ed = U.edit != null && h.shots[U.edit] ? U.edit : null,
-    cur = ed != null ? h.shots[ed] : null,
-    open = openShot(h),
-    rec = ed == null ? suggest(n).rec : null; // 提案している番手（ボタンに印を付ける）
-  const onClub = cur ? cur.c : open ? open.c : null;
+  const i = slotOf(h),
+    s = h.shots[i] || null,
+    last = i === h.shots.length - 1,
+    open = s && s === openShot(h),
+    no = strokeNo(h, i),
+    rec = !s ? suggest(n).rec : null; // 提案している番手（新しい打のときだけ印を付ける）
   const clubs = byDist()
     .slice()
     .reverse()
     .map((c) => {
-      const on = onClub === c.name,
+      const on = s && s.c === c.name,
         isRec = rec && (c.name === rec || rec.indexOf(c.name) >= 0),
-        off = ed == null && ng(c, h);
+        off = !s && ng(c, h);
       return (
         '<button data-club="' +
         esc(c.name) +
@@ -145,55 +149,63 @@ function shotCard(n, h) {
       );
     })
     .join("");
-  const head =
-    ed != null
-      ? ed + 1 + "打目を直す（番手・結果を押し直す）"
-      : (atTee(n) ? "ティーショット" : strokes(h) + 1 + "打目") + "：打つ前に番手を押す";
+  const state = !s
+    ? "まだ記録していません。打つ前に番手を押すと記録します。"
+    : open
+      ? esc(s.c) + "で記録しました。ボールに着いたら「到着」を押します。"
+      : (s.r === "add" ? "番手なし" : esc(s.c)) +
+        (s.r === "ok" ? "" : "・" + esc(resLabel(s))) +
+        (s.dist ? "・" + s.dist + "Y" : "") +
+        "（記録ずみ。番手や結果を押すと直せます）";
+  const arriveBtn = open
+    ? '<button class="act" data-arrive="1" style="width:100%;min-height:60px;font-size:18px">到着（ボールに着いた）</button>'
+    : '<button class="ghost" disabled style="width:100%;min-height:60px;font-size:16px;opacity:.5">到着（' +
+      (!s ? "番手を押して打ったあとに押せます" : "この打は到着ずみです") +
+      "）</button>";
   return (
-    '<section class="card"' +
-    (ed != null ? ' style="border:2px solid var(--accent)"' : "") +
-    '><div class="h">' +
-    head +
-    "</div>" +
-    (ed == null && open && open.at && Date.now() - open.at < SWAP_MS
-      ? note(
-          h.shots.length +
-            "打目を" +
-            esc(open.c) +
-            "で記録しました。押しまちがえたら、すぐに正しい番手を押すと入れ替わります。",
-          ' style="margin:0;color:var(--fg)"',
-        )
-      : "") +
+    '<section class="card" id="strokecard" style="border:2px solid var(--accent)">' +
+    '<div class="hole-nav" style="display:grid;grid-template-columns:64px 1fr 64px;gap:8px;align-items:center">' +
+    '<button class="ghost" data-sk="-1" style="min-height:56px;font-size:22px"' +
+    (i === 0 ? " disabled" : "") +
+    ">◀</button>" +
+    '<div style="text-align:center"><div id="strokeno" style="font-size:28px;font-weight:700">' +
+    no +
+    '打目</div><div class="note" style="margin:0">' +
+    (s ? "記録ずみ " + (i + 1) + "/" + h.shots.length : "次の打") +
+    "</div></div>" +
+    '<button class="ghost" data-sk="1" style="min-height:56px;font-size:22px"' +
+    (!s ? " disabled" : "") +
+    ">▶</button></div>" +
+    '<p class="note" id="strokestate" style="margin:0;color:var(--fg)">' +
+    state +
+    "</p>" +
+    '<div class="h" style="font-size:14px">番手（打つ前に押す）</div>' +
     '<div class="clubs">' +
     clubs +
     "</div>" +
-    resultBox(n, h, ed) +
-    (ed != null
-      ? '<div class="two"><button class="ghost" data-del="1" style="color:var(--danger)">この打を消す</button><button class="act" data-edend="1">直し終わる</button></div>'
-      : "") +
-    shotLog(h, ed) +
-    (ed == null
-      ? '<div class="two"><button class="ghost" data-add="1">番手なしで1打足す</button><button class="act" data-act="green">グリーンに乗った</button></div>' +
-        '<button class="ghost" data-simple="1" style="width:100%">かんたん入力（合計打数だけ）</button>'
-      : "") +
+    arriveBtn +
+    (s && s.r !== "add" && s.r !== "f4" ? resultBox(n, h, i) : !s ? f4Box(n) : "") +
+    (s
+      ? '<div class="two"><button class="ghost" data-del="1" style="color:var(--danger)">この打を消す</button>' +
+        (h.green
+          ? '<button class="act" data-edend="1">パットの入力に戻る</button>'
+          : last
+            ? '<button class="act" data-act="green">グリーンに乗った</button>'
+            : '<button class="ghost" data-edend="1">いちばん新しい打へ</button>') +
+        "</div>"
+      : '<div class="two"><button class="ghost" data-add="1">番手なしで1打足す</button><button class="act" data-act="green">グリーンに乗った</button></div>') +
+    shotLog(h, i < h.shots.length ? i : null) +
+    '<button class="ghost" data-simple="1" style="width:100%">かんたん入力（合計打数だけ）</button>' +
     "</section>"
   );
 }
 
-/** 結果のボタン（OB・池・ロスト・空振り）。直している打か、最後の打に付ける */
-function resultBox(n, h, ed) {
-  const i = ed != null ? ed : h.shots.length - 1,
-    s = h.shots[i];
-  if (!s || s.r === "add" || s.r === "f4") return ed == null ? f4Box(n) : "";
+/** 結果のボタン（OB・池・ロスト・空振り）。i 番目の打に付ける */
+function resultBox(n, h, i) {
+  const s = h.shots[i];
   const cur = s.r === "ob" ? s.k || "ob" : s.r === "miss" ? "miss" : null;
   return (
-    '<div class="h" style="font-size:14px">' +
-    (i + 1) +
-    "打目（" +
-    esc(s.c) +
-    "）の結果" +
-    (cur ? "：" + esc(resLabel(s)) : "") +
-    '</div><div class="res r4">' +
+    '<div class="h" style="font-size:14px">結果（ふつうに打てた時は押さない）</div><div class="res r4">' +
     RESULTS.map(
       (x) =>
         '<button data-res="' +
@@ -204,14 +216,11 @@ function resultBox(n, h, ed) {
         x[1] +
         "</button>",
     ).join("") +
-    (ed == null ? f4Btn(n) : "") +
+    (i === h.shots.length - 1 ? f4Btn(n) : "") +
     "</div>" +
-    (ed == null ? f4Box(n) : "") +
-    note(
-      "ふつうに打てた時は押しません。OB・池・ロストは1打罰で、次は同じ場所から。もう一度押すと取り消せます。",
-      ' style="margin:0"',
-    ) +
-    (ed == null ? clubNotes(s.c) : "")
+    (i === h.shots.length - 1 ? f4Box(n) : "") +
+    note("OB・池・ロストは1打罰で、次は同じ場所から。もう一度押すと取り消せます。", ' style="margin:0"') +
+    (i === h.shots.length - 1 && s.r === "ok" ? clubNotes(s.c) : "")
   );
 }
 
@@ -229,7 +238,7 @@ function clubNotes(c) {
 function shotLog(h, ed) {
   if (!h.shots.length) return "";
   return (
-    '<div class="note" style="margin:0">打の一覧（押すと、その打を直せます）</div><div class="log">' +
+    '<div class="note" style="margin:0">記録した打（押すと、その打へ移ります）</div><div class="log">' +
     h.shots
       .map(
         (x, i) =>
@@ -333,31 +342,12 @@ function quickBox(n, h) {
   );
 }
 
-/** 感触の欄を、画面の上のほうに出すか（打った直後で、まだ球に着いていない間） */
-function feelTop(h) {
-  const s = h.shots[h.shots.length - 1];
-  return !!s && s.r !== "miss" && s.r !== "add" && h.arr !== h.shots.length && !h.green;
-}
-
 /** 今の1打の感触（方向・当たり）を押す欄 */
 function feelBox(h) {
   const s = h.shots[h.shots.length - 1];
   if (!s || s.r === "miss" || s.r === "add") return "";
-  const open = openShot(h) === s;
   return (
-    '<section class="card"' +
-    (open ? ' style="border:2px solid var(--accent)"' : "") +
-    ">" +
-    (open
-      ? '<button class="act" data-arrive="1" style="width:100%;min-height:60px;font-size:18px">到着（ボールに着いた）</button>' +
-        note(
-          h.shots.length +
-            "打目（" +
-            esc(s.c) +
-            "）を打ったら、ボールまで行って押します。打った場所からの距離を記録します。",
-          ' style="margin:0"',
-        )
-      : "") +
+    '<section class="card">' +
     '<div class="h">今の1打の感触（' +
     esc(s.c) +
     (s.dist ? "・実測" + s.dist + "Y" : "") +
