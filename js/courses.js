@@ -7,7 +7,7 @@
  *   name   画面に出すコース名
  *   base   攻略の文（club・aim など）を書いたときのティー
  *   tees   ティーの一覧 [記号, 画面に出す名前]
- *   pics   true なら、ホールの画像（images.js）がある
+ *   pics   true なら、ホールの画像（images.js）がある。"tamagawa" なら images-tamagawa.js
  *   notes  「アドバイス → 残り距離」に出す、コース全体のメモ
  *   clubTips  番手ごとの、このコースだけの注意
  *   ch     クラブハウスの位置 [緯度, 経度]（コース全体図に出す）
@@ -212,6 +212,7 @@ const COURSES = [
   {
     id: "tamagawa",
     name: "玉川CC",
+    pics: "tamagawa", // レイアウト図（images-tamagawa.js。ゴルフ場の了承を得て掲載）
     base: "w",
     tees: [["b", "Blue"], ["w", "White"], ["g", "Green"], ["r", "Red"]],
     notes: [
