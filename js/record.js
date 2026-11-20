@@ -275,6 +275,7 @@ function moveTo(n) {
   R.cur = n;
   U.edit = null;
   U.pic = "map";
+  U.picN = null;
   G.y = null;
   G.direct = null;
   save();

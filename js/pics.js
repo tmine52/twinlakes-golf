@@ -82,6 +82,8 @@ function picBox(n) {
       esc(imgErr || "最初の1回だけ入力します。スコアや番手は入力なしで使えます。") +
       "</p>"
     );
+  const cur = n; // 今いるホール（記録するホール）
+  n = picShown(cur); // 図を見ているホール（フリック・◀▶で変わる。記録には関係しない）
   const m = IMGS[id][n - 1],
     one = !m.tee, // レイアウト図1枚だけの組（玉川CC）
     p = one ? "map" : U.pic || "map",
@@ -101,15 +103,31 @@ function picBox(n) {
             '" alt="' +
             n +
             '番のグリーン"><span class="tag top">↑奥</span><span class="tag bot">↓手前</span></div><p class="note">旗は撮影時のものです。当日のピンはカートナビかピン位置表で確認します。</p>';
+  const nav =
+    '<div class="picnav"><button data-picgo="-1" aria-label="前のホールの図">◀</button><div class="h" id="picno">' +
+    n +
+    (one ? "番のレイアウト図" : "番の画像") +
+    '</div><button data-picgo="1" aria-label="次のホールの図">▶</button></div>' +
+    (n !== cur
+      ? '<p class="note picaway">今いるのは ' +
+        cur +
+        '番です（記録は ' +
+        cur +
+        '番のまま）。<button class="act" data-picgo="0">' +
+        cur +
+        "番の図に戻す</button></p>"
+      : "");
+  const tip = '<p class="note">図を左右にフリックすると、前後のホールの図を見られます。</p>';
   if (one)
     return (
-      '<div class="h">' +
-      n +
-      '番のレイアウト図</div><div class="pics">' +
+      nav +
+      '<div class="pics" data-swipe="1">' +
       i +
-      '</div><p class="note">アコーディア・ゴルフの資料（ゴルフ場の了承を得て掲載）。</p>'
+      '</div><p class="note">アコーディア・ゴルフの資料（ゴルフ場の了承を得て掲載）。</p>' +
+      tip
     );
   return (
+    nav +
     '<div class="tabs">' +
     [
       ["map", "全体"],
@@ -118,8 +136,25 @@ function picBox(n) {
     ]
       .map((x) => '<button data-pic="' + x[0] + '" aria-pressed="' + (p === x[0]) + '">' + x[1] + "</button>")
       .join("") +
-    '</div><div class="pics">' +
+    '</div><div class="pics" data-swipe="1">' +
     i +
-    "</div>"
+    "</div>" +
+    tip
   );
+}
+
+/** 図を見ているホール。今いるホール cur と同じなら cur（ほかのホールへ移ったら、今いるホールに戻る） */
+function picShown(cur) {
+  const v = U.picN;
+  return v && v.cur === cur && v.co === CO.id ? v.n : cur;
+}
+
+/** 図だけを前後のホールに切り替える。d：-1 前・1 次・0 今いるホールに戻す（18番の次は1番） */
+function picStep(d) {
+  const id = picSet();
+  if (!id || !IMGS[id]) return;
+  const N = IMGS[id].length,
+    v = d === 0 ? R.cur : ((picShown(R.cur) - 1 + d + N) % N) + 1;
+  U.picN = v === R.cur ? null : { cur: R.cur, co: CO.id, n: v };
+  render();
 }

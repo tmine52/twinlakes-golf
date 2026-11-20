@@ -179,6 +179,9 @@ const ON_CLICK = {
     U.pic = a.pic;
     render();
   },
+  picgo(a) {
+    picStep(Number(a.picgo));
+  },
 
   /* ホールの移動 */
   go(a) {
@@ -602,6 +605,35 @@ document.addEventListener("click", async (e) => {
     name = Object.keys(ON_CLICK).find((k) => a[k] != null);
   if (name) await ON_CLICK[name](a);
 });
+
+/*
+ * 図のフリック：図（data-swipe）の上で指1本を左右に50px以上払うと、前後のホールの図にする。
+ * 左へ払う＝次のホール、右へ払う＝前のホール。縦のスクロールや2本指の拡大は、そのまま。
+ */
+let swipe0 = null;
+document.addEventListener(
+  "touchstart",
+  (e) => {
+    const t = e.target.closest && e.target.closest("[data-swipe]");
+    swipe0 =
+      t && e.touches.length === 1 ? { x: e.touches[0].clientX, y: e.touches[0].clientY, at: Date.now() } : null;
+  },
+  { passive: true },
+);
+document.addEventListener(
+  "touchend",
+  (e) => {
+    if (!swipe0) return;
+    const c = e.changedTouches[0],
+      dx = c.clientX - swipe0.x,
+      dy = c.clientY - swipe0.y,
+      ok = Math.abs(dx) >= 50 && Math.abs(dx) > Math.abs(dy) * 1.5 && Date.now() - swipe0.at < 800;
+    swipe0 = null;
+    if (ok) picStep(dx < 0 ? 1 : -1);
+  },
+  { passive: true },
+);
+document.addEventListener("touchcancel", () => (swipe0 = null), { passive: true });
 
 document.addEventListener("change", (e) => {
   const t = e.target;
