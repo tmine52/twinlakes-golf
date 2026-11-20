@@ -43,6 +43,7 @@ const FILES = [
   "js/view-advice.js",
   "js/main.js",
   "js/send.js",
+  "images-tamagawa.js", // 玉川CC のレイアウト図（約1.4MB）
 ];
 // ホールの画像は大きい（約2MB）ので、同じ版の画像が前の保存場所にあれば写して使う
 const IMAGES = "images.js";
