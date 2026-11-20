@@ -327,6 +327,32 @@ dd {
   display: grid;
   gap: 6px;
 }
+.pics[data-swipe] {
+  touch-action: pan-y pinch-zoom;
+}
+.picnav {
+  display: grid;
+  grid-template-columns: 52px 1fr 52px;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.picnav .h {
+  text-align: center;
+  margin: 0;
+}
+.picnav button {
+  min-height: 44px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--soft);
+  color: var(--fg);
+  font-size: 18px;
+  font-weight: 700;
+}
+.picaway .act {
+  margin-left: 6px;
+}
 .tabs {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
