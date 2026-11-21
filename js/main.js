@@ -694,6 +694,7 @@ document.addEventListener("input", (e) => {
 load();
 applyCourse();
 render();
+if (U.clubNote) say(U.clubNote, 9000); // 番手の距離を新しい世代に合わせたときだけ
 if (R.gps) gpsOn();
 
 // GPSの「◯秒前」の表示と図を、5秒ごとに新しくする
