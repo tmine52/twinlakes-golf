@@ -323,6 +323,74 @@ dd {
 #status span:empty {
   display: none;
 }
+.cl {
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+  margin-top: 8px;
+}
+.clh {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.clh span {
+  color: var(--muted);
+  font-size: 14px;
+}
+.trend {
+  display: block;
+  width: 100%;
+  max-width: 420px;
+  height: auto;
+  margin: 2px 0 4px;
+}
+.trend .ax {
+  stroke: var(--line);
+}
+.trend .lb {
+  fill: var(--muted);
+  font-size: 10px;
+}
+.trend .vl {
+  fill: var(--fg);
+  font-size: 10px;
+  font-weight: 700;
+}
+.trend .tl {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  opacity: 0.6;
+}
+.trend .rg {
+  stroke-width: 3;
+  stroke-linecap: round;
+  opacity: 0.35;
+}
+.trend .rg.pf,
+.trend .mk.pf {
+  stroke: var(--accent);
+  fill: var(--accent);
+}
+.trend .rg.pp,
+.trend .mk.pp {
+  stroke: var(--muted);
+  fill: var(--muted);
+}
+.trend .rg.co,
+.trend .mk.co {
+  stroke: #d9822b;
+  fill: #d9822b;
+}
+.legend .pf {
+  color: var(--accent);
+}
+.legend .pp {
+  color: var(--muted);
+}
+.legend .co {
+  color: #d9822b;
+}
 .pics {
   display: grid;
   gap: 6px;
@@ -486,6 +554,7 @@ tr.sum td {
     "pics",
     "view-hole",
     "view-score",
+    "clublog",
     "view-settings",
     "view-advice",
     "main",
