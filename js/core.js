@@ -21,7 +21,7 @@
 /* ---- 保存場所 ---- */
 const OLD_KEY = "twinlakes-v1"; // v28 までの保存場所（引き継ぎのために読むだけ。消さない）
 const KEY = "golf-kouryaku-v1"; // 今の保存場所
-const CV = 3; // 番手の一覧の世代。世代2の端末は CLUB_UPD の番手だけを変え、それより古い端末は最初の値に戻す
+const CV = 4; // 番手の一覧の世代。世代2以上の端末は CLUB_UPDS の番手だけを変え、それより古い端末は最初の値に戻す
 
 /**
  * v28 までの保存場所に記録があり、今の保存場所がまだ空なら、中身をコピーする。
@@ -124,17 +124,19 @@ function load() {
     if (x && x.holes) {
       R = Object.assign(R, x);
       if (x.cv !== CV) {
-        if (x.cv === CV - 1 && Array.isArray(R.clubs)) {
-          // 1つ前の世代：測り直した番手だけ距離を変える（ほかの番手は、端末で直した値のまま）
+        if (x.cv >= 2 && x.cv < CV && Array.isArray(R.clubs)) {
+          // 世代2以上：そのあとの世代で測り直した番手だけ距離を変える（ほかの番手は、端末で直した値のまま）
           const ch = [];
-          CLUB_UPD.list.forEach(([name, d]) => {
-            const c = R.clubs.find((k) => k.name === name);
-            if (c && c.dist !== d) {
-              ch.push(name + " " + c.dist + "→" + d + "Y");
-              c.dist = d;
-            }
-          });
-          if (ch.length) U.clubNote = CLUB_UPD.label + "の結果で、番手の距離を変えました：" + ch.join("・");
+          CLUB_UPDS.filter((u) => u.cv > x.cv).forEach((u) =>
+            u.list.forEach(([name, d]) => {
+              const c = R.clubs.find((k) => k.name === name);
+              if (c && c.dist !== d) {
+                ch.push(name + " " + c.dist + "→" + d + "Y");
+                c.dist = d;
+              }
+            }),
+          );
+          if (ch.length) U.clubNote = CLUB_UPD_LABEL + "の結果で、番手の距離を変えました：" + ch.join("・");
         } else R.clubs = DEF.map((c) => ({ name: c[0], dist: c[1] }));
         R.cv = CV;
         save();

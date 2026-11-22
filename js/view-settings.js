@@ -1,14 +1,14 @@
 /*
  * 「番手の距離」画面（設定もここ）
  *
- * 上から順に：コース → お試しモード → 使うティー → 番手の距離の見直し案 → 番手の距離
+ * 上から順に：コース → お試しモード → 使うティー → 番手の距離の見直し案 → 番手の距離 → 番手ごとの記録（累計）と飛距離の伸び
  *   → 記録の控え（書き出し・読み込み） → ラウンド記録を消す
  */
 
 /** 「番手の距離」画面を描く */
 function clubsView() {
   app.innerHTML =
-    courseBox() + demoCard() + teeCard() + proposalCard() + distCard() + backupCard() + resetCard();
+    courseBox() + demoCard() + teeCard() + proposalCard() + distCard() + clubLogCard() + backupCard() + resetCard();
 }
 
 /** コースの選択・追加の欄 */
