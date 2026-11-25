@@ -142,6 +142,7 @@ function coachView() {
       [
         ["club", "番手別"],
         ["base", "基本"],
+        ["lesson", "レッスン"],
         ["flow", "使い方"],
         ["word", "用語"],
       ],
@@ -159,7 +160,9 @@ function coachView() {
         ? coachBase()
         : sec === "word"
           ? glossaryView()
-          : coachFlow());
+          : sec === "lesson"
+            ? coachLessons()
+            : coachFlow());
   if (sec === "word") glFilter();
 }
 
