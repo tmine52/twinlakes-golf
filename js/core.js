@@ -66,7 +66,9 @@ let R = {
   cur: 1, // 今のホール
   tee: "w", // 使うティー
   holes: {}, // ホールごとの記録
-  clubs: DEF.map((c) => ({ name: c[0], dist: c[1] })), // 番手と計画の距離
+  clubs: DEF.map((c) => ({ name: c[0], dist: c[1] })), // 番手と計画の距離（dist：フル、half：ハーフ。half が無ければフルの9割）
+  swing: "f", // 番手の勧めに使うスイング（"f" フル／"h" ハーフ）。v36 から
+  gl: {}, // 覚えたゴルフ用語（{用語: 1}）。v37 から
   gps: false,
 };
 
@@ -114,6 +116,20 @@ function save() {
   }
 }
 
+/* スイングの選び方（v36）。11/23 のレッスン：ラウンドはハーフスイングが基本、距離がほしいときは番手を1つ上げる */
+const SWING = { f: "フル", h: "ハーフ" };
+const HALF_RATE = 0.9; // ハーフの距離を入れていない番手は、フルの9割（5Y単位）を仮に使う
+
+/** その番手のハーフスイングの距離 */
+function halfOf(c) {
+  return c.half > 0 ? c.half : Math.round((c.dist * HALF_RATE) / 5) * 5;
+}
+
+/** 番手の勧めに使う距離（選んでいるスイングの距離） */
+function cd(c) {
+  return R.swing === "h" ? halfOf(c) : c.dist;
+}
+
 /** 保存してある記録を読み込む */
 function load() {
   try {
@@ -123,6 +139,8 @@ function load() {
     const x = JSON.parse(raw || "null");
     if (x && x.holes) {
       R = Object.assign(R, x);
+      if (!SWING[R.swing]) R.swing = "f";
+      if (!R.gl || typeof R.gl !== "object" || Array.isArray(R.gl)) R.gl = {};
       if (x.cv !== CV) {
         if (x.cv >= 2 && x.cv < CV && Array.isArray(R.clubs)) {
           // 世代2以上：そのあとの世代で測り直した番手だけ距離を変える（ほかの番手は、端末で直した値のまま）

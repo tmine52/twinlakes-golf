@@ -274,6 +274,7 @@ function cleanShot(s, withHole) {
   if (hit) o.hit = hit;
   if (s.r === "f4") o.t = cleanInt(s.t, 3, 4) || 4;
   if (s.r === "ob" && OB_KIND[s.k]) o.k = s.k; // OB・池・ロストの別（v30 から）
+  if (SWING[s.sw]) o.sw = s.sw; // フル／ハーフ（v36 から）
   return o;
 }
 
@@ -396,10 +397,11 @@ function readBackup(txt) {
     rawClubs = Array.isArray(d.clubs) ? d.clubs.slice(0, 20) : [];
   rawClubs.forEach((c) => {
     const name = c && cleanStr(c.name, 6),
-      dist = c && cleanInt(c.dist, 1, 350);
+      dist = c && cleanInt(c.dist, 1, 350),
+      half = c && cleanInt(c.half, 1, 350);
     if (name && dist && !seen[name]) {
       seen[name] = 1;
-      o.clubs.push({ name, dist });
+      o.clubs.push(half ? { name, dist, half } : { name, dist });
     }
   });
   // 読み取れない行が1つでもあったら、番手は入れ替えない（こわれた控えで、番手が減ってしまうのを防ぐ）

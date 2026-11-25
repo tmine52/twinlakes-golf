@@ -2,13 +2,13 @@
  * 番手の提案（残り距離と球の場所から、次に持つ番手を決める）
  */
 
-/** 番手を、距離の短い順に並べる */
+/** 番手を、距離の短い順に並べる（選んでいるスイングの距離で） */
 function byDist() {
   const o = (c) => R.clubs.indexOf(c);
   return R.clubs
     .filter((c) => c.dist > 0)
     .slice()
-    .sort((a, b) => a.dist - b.dist || o(b) - o(a));
+    .sort((a, b) => cd(a) - cd(b) || o(b) - o(a));
 }
 
 /** 球の場所（未設定ならFW） */
@@ -25,11 +25,11 @@ function ng(c, h) {
   return false;
 }
 
-/** 球の場所を考えた目安の距離（浅いラフは1割引、深いラフとバンカーは半分） */
+/** 球の場所を考えた目安の距離（選んでいるスイングの距離。浅いラフは1割引、深いラフとバンカーは半分） */
 function eff(c, h) {
   const k = lieOf(h),
     f = k === "light" ? 0.9 : k === "deep" || k === "bunker" ? 0.5 : 1;
-  return f === 1 ? c.dist : Math.round((c.dist * f) / 5) * 5;
+  return f === 1 ? cd(c) : Math.round((cd(c) * f) / 5) * 5;
 }
 
 /** 長い残り距離を、どの番手で何回に分けて運ぶかの計画 */
@@ -40,14 +40,14 @@ function planFw(r, l) {
     const q = [];
     let x = r;
     while (x > 30 && q.length < 5) {
-      const f = a.find((c) => c.dist >= x && c.dist <= u.dist);
+      const f = a.find((c) => cd(c) >= x && cd(c) <= cd(u));
       if (f) {
         q.push(f.name);
         x = 0;
         break;
       }
       q.push(u.name);
-      x -= u.dist;
+      x -= cd(u);
     }
     if (x > 0) q.push("寄せ");
     return q;
@@ -113,9 +113,9 @@ function suggest0(n) {
       rec: "7I",
     };
   }
-  const fit = l.find((c) => c.dist >= r && !/1W|3W/.test(c.name));
+  const fit = l.find((c) => cd(c) >= r && !/1W|3W/.test(c.name));
   if (fit)
-    return { c: fit.name, n: "目安" + fit.dist + "Y。池とバンカーを避ける番手を優先します。", rec: fit.name };
+    return { c: fit.name, n: "目安" + cd(fit) + "Y。池とバンカーを避ける番手を優先します。", rec: fit.name };
   if (d.p === 3 && atTee(n)) {
     const u3 = l.filter((c) => c.name !== "1W").pop();
     if (u3)
@@ -132,9 +132,9 @@ function suggest0(n) {
     n:
       (pl ? "計画：" + pl.q.join(" → ") + "（" + pl.q.length + "回でグリーンへ）。" : "") +
       "目安" +
-      u.dist +
+      cd(u) +
       "Yで残り約" +
-      Math.max(0, r - u.dist) +
+      Math.max(0, r - cd(u)) +
       "Y。曲げないことを優先します。",
     rec: u.name,
   };

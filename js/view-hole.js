@@ -99,12 +99,26 @@ function suggestCard(n, h) {
   return (
     '<div class="sug">' +
     lieRow(n, h) +
+    swingRow(n, h) +
     '<div class="t">次の番手</div><div class="c">' +
     esc(s.c) +
     '</div><div class="n">' +
     esc(s.n) +
     "</div>" +
     (tip ? '<div class="n" style="margin-top:4px;font-weight:700">' + esc(tip) + "</div>" : "") +
+    "</div>"
+  );
+}
+
+/** 番手の勧めに使うスイングの切り替え（フル／ハーフ）。ティーとグリーンの上では出さない */
+function swingRow(n, h) {
+  if (h.green || atTee(n)) return "";
+  return (
+    choiceRow(SWING, "swing", R.swing, 34, "0 0 4px") +
+    '<div class="note" style="margin:0 0 6px">' +
+    (R.swing === "h"
+      ? "ハーフスイングの距離で勧めています。距離がほしいときは、番手を1つ上げます。"
+      : "フルスイングの距離で勧めています。コーチ：ラウンドはハーフが基本、フルは1日3〜4回。") +
     "</div>"
   );
 }

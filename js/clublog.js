@@ -315,7 +315,7 @@ function clubShots() {
       c: s.c,
       tot: s.dist,
       miss: false,
-      full: true,
+      full: s.sw !== "h",
       known: false,
     });
   });

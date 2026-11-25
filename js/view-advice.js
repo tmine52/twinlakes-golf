@@ -143,6 +143,7 @@ function coachView() {
         ["club", "番手別"],
         ["base", "基本"],
         ["flow", "使い方"],
+        ["word", "用語"],
       ],
       "coach",
       sec,
@@ -150,7 +151,16 @@ function coachView() {
     '<p class="note">' +
     esc(COACH_NOTE) +
     "</p></section>";
-  app.innerHTML = tabs + (sec === "club" ? coachClubs() : sec === "base" ? coachBase() : coachFlow());
+  app.innerHTML =
+    tabs +
+    (sec === "club"
+      ? coachClubs()
+      : sec === "base"
+        ? coachBase()
+        : sec === "word"
+          ? glossaryView()
+          : coachFlow());
+  if (sec === "word") glFilter();
 }
 
 /** コーチ：番手別の教え */

@@ -88,7 +88,7 @@ function shot(c) {
     if (h.ancRem != null) bf = h.ancRem;
   }
   startRound();
-  h.shots.push({ c: c.name, r: "ok", pen: 0, before: bf, lie: k, from, at: Date.now() });
+  h.shots.push({ c: c.name, r: "ok", pen: 0, before: bf, lie: k, from, at: Date.now(), sw: R.swing });
   h.rem = late ? r : Math.max(0, r - e);
   h.lie = "fw";
   U.edit = null;

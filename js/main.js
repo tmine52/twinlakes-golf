@@ -447,6 +447,45 @@ const ON_CLICK = {
     save();
     render();
   },
+  gm(a) {
+    // 用語：覚える／一覧・さがす
+    U.gm = a.gm;
+    U.gshow = false;
+    render();
+  },
+  gshow() {
+    U.gshow = true;
+    render();
+  },
+  gknow(a) {
+    // 覚える：「覚えた」「まだ」を押して次の用語へ
+    if (a.gknow === "1") R.gl[U.gc] = 1;
+    else delete R.gl[U.gc];
+    save();
+    U.gc = glNext(U.gc);
+    U.gshow = false;
+    render();
+  },
+  gmark(a) {
+    // 一覧：覚えた／まだ を切り替える（画面は作り直さず、ボタンだけ変える）
+    const t = a.gmark,
+      on = !R.gl[t];
+    if (on) R.gl[t] = 1;
+    else delete R.gl[t];
+    save();
+    const b = [...document.querySelectorAll("[data-gmark]")].find((x) => x.dataset.gmark === t);
+    if (b) {
+      b.className = on ? "act" : "ghost";
+      b.textContent = on ? "覚えた" : "まだ";
+      b.setAttribute("aria-pressed", on);
+    }
+  },
+  swing(a) {
+    R.swing = a.swing;
+    save();
+    render();
+    say("番手の勧めを、" + SWING[a.swing] + "スイングの距離にしました。", 2500);
+  },
   prop(a) {
     const p = distProposals().find((x) => x.name === a.prop),
       c = R.clubs.find((x) => x.name === a.prop);
@@ -616,7 +655,9 @@ document.addEventListener(
   (e) => {
     const t = e.target.closest && e.target.closest("[data-swipe]");
     swipe0 =
-      t && e.touches.length === 1 ? { x: e.touches[0].clientX, y: e.touches[0].clientY, at: Date.now() } : null;
+      t && e.touches.length === 1
+        ? { x: e.touches[0].clientX, y: e.touches[0].clientY, at: Date.now() }
+        : null;
   },
   { passive: true },
 );
@@ -634,6 +675,15 @@ document.addEventListener(
   { passive: true },
 );
 document.addEventListener("touchcancel", () => (swipe0 = null), { passive: true });
+
+// 用語をさがす欄：1文字ごとに、その場で絞り込む
+document.addEventListener("input", (e) => {
+  const t = e.target;
+  if (t.dataset && t.dataset.gq != null) {
+    U.gq = t.value;
+    glFilter();
+  }
+});
 
 document.addEventListener("change", (e) => {
   const t = e.target;
@@ -666,6 +716,35 @@ document.addEventListener("change", (e) => {
       U.bkInfo = "ファイルを読みました。「控えを読み込む」を押してください。";
       render();
     });
+    return;
+  }
+  // 用語の分類
+  if (t.dataset && t.dataset.gk != null) {
+    U.gk = t.value;
+    U.gc = null;
+    U.gshow = false;
+    render();
+    return;
+  }
+  // ハーフスイングの距離の入力欄（空にすると、フルの9割に戻す）
+  const hi = t.dataset && t.dataset.half;
+  if (hi != null) {
+    const c = R.clubs[hi];
+    if (t.value === "") {
+      delete c.half;
+      save();
+      render();
+      say(c.name + "のハーフを、フルの9割（" + halfOf(c) + "Y）に戻しました。", 2500);
+      return;
+    }
+    const v = Number(t.value);
+    if (!(v > 0 && v <= 350)) {
+      say("1から350までの数字を入力してください。", 3000);
+      return;
+    }
+    c.half = Math.round(v);
+    save();
+    say(c.name + "のハーフを" + c.half + "Yにしました。", 2500);
     return;
   }
   // 番手の距離の入力欄

@@ -8,7 +8,14 @@
 /** 「番手の距離」画面を描く */
 function clubsView() {
   app.innerHTML =
-    courseBox() + demoCard() + teeCard() + proposalCard() + distCard() + clubLogCard() + backupCard() + resetCard();
+    courseBox() +
+    demoCard() +
+    teeCard() +
+    proposalCard() +
+    distCard() +
+    clubLogCard() +
+    backupCard() +
+    resetCard();
 }
 
 /** コースの選択・追加の欄 */
@@ -119,10 +126,11 @@ function proposalCard() {
 function distCard() {
   return (
     '<section class="card"><div class="h">番手の距離（Y）</div>' +
+    '<div class="row3 note"><div></div><div>フル</div><div>ハーフ</div></div>' +
     R.clubs
       .map(
         (c, i) =>
-          '<div class="row"><div style="align-self:center;font-weight:700">' +
+          '<div class="row3"><div style="align-self:center;font-weight:700">' +
           esc(c.name) +
           '</div><input class="input" data-dist="' +
           i +
@@ -130,9 +138,18 @@ function distCard() {
           c.dist +
           '" aria-label="' +
           esc(c.name) +
-          'の距離"></div>',
+          'のフルスイングの距離"><input class="input" data-half="' +
+          i +
+          '" type="number" inputmode="numeric" min="1" max="350" value="' +
+          (c.half > 0 ? c.half : "") +
+          '" placeholder="' +
+          halfOf(c) +
+          '（仮）" aria-label="' +
+          esc(c.name) +
+          'のハーフスイングの距離"></div>',
       )
       .join("") +
+    '<p class="note">ハーフが空欄の番手は、フルの9割（5Y単位。薄い字の数字）を仮に使います。練習でハーフの距離を測ったら入れてください。ホール画面の「フル／ハーフ」で、番手の勧めに使う距離を切り替えます。</p>' +
     "</section>"
   );
 }
