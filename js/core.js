@@ -21,7 +21,7 @@
 /* ---- 保存場所 ---- */
 const OLD_KEY = "twinlakes-v1"; // v28 までの保存場所（引き継ぎのために読むだけ。消さない）
 const KEY = "golf-kouryaku-v1"; // 今の保存場所
-const CV = 4; // 番手の一覧の世代。世代2以上の端末は CLUB_UPDS の番手だけを変え、それより古い端末は最初の値に戻す
+const CV = 5; // 番手の一覧の世代。世代2以上の端末は CLUB_UPDS の番手だけを変え、それより古い端末は最初の値に戻す
 
 /**
  * v28 までの保存場所に記録があり、今の保存場所がまだ空なら、中身をコピーする。
@@ -66,7 +66,7 @@ let R = {
   cur: 1, // 今のホール
   tee: "w", // 使うティー
   holes: {}, // ホールごとの記録
-  clubs: DEF.map((c) => ({ name: c[0], dist: c[1] })), // 番手と計画の距離（dist：フル、half：ハーフ。half が無ければフルの9割）
+  clubs: defClubs(), // 番手と計画の距離（dist：フル、half：ハーフ。half が無ければフルの9割）
   swing: "f", // 番手の勧めに使うスイング（"f" フル／"h" ハーフ）。v36 から
   gl: {}, // 覚えたゴルフ用語（{用語: 1}）。v37 から
   gps: false,
@@ -144,18 +144,31 @@ function load() {
       if (x.cv !== CV) {
         if (x.cv >= 2 && x.cv < CV && Array.isArray(R.clubs)) {
           // 世代2以上：そのあとの世代で測り直した番手だけ距離を変える（ほかの番手は、端末で直した値のまま）
-          const ch = [];
-          CLUB_UPDS.filter((u) => u.cv > x.cv).forEach((u) =>
-            u.list.forEach(([name, d]) => {
+          const ch = [],
+            labels = [];
+          CLUB_UPDS.filter((u) => u.cv > x.cv).forEach((u) => {
+            const n0 = ch.length;
+            (u.list || []).forEach(([name, d]) => {
               const c = R.clubs.find((k) => k.name === name);
               if (c && c.dist !== d) {
                 ch.push(name + " " + c.dist + "→" + d + "Y");
                 c.dist = d;
               }
-            }),
-          );
-          if (ch.length) U.clubNote = CLUB_UPD_LABEL + "の結果で、番手の距離を変えました：" + ch.join("・");
-        } else R.clubs = DEF.map((c) => ({ name: c[0], dist: c[1] }));
+            });
+            // ハーフ：本人が入れていない番手だけ（入れていなければ、今まではフルの9割を使っていた）
+            (u.half || []).forEach(([name, d]) => {
+              const c = R.clubs.find((k) => k.name === name);
+              if (c && !(c.half > 0)) {
+                ch.push(name + " ハーフ " + halfOf(c) + "→" + d + "Y");
+                c.half = d;
+              }
+            });
+            const lb = u.label || CLUB_UPD_LABEL;
+            if (ch.length > n0 && !labels.includes(lb)) labels.push(lb);
+          });
+          if (ch.length)
+            U.clubNote = labels.join("・") + "の結果で、番手の距離を変えました：" + ch.join("・");
+        } else R.clubs = defClubs();
         R.cv = CV;
         save();
       }
