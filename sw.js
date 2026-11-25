@@ -41,6 +41,7 @@ const FILES = [
   "js/view-score.js",
   "js/clublog.js",
   "js/glossary.js",
+  "js/lessons.js",
   "js/view-settings.js",
   "js/view-advice.js",
   "js/main.js",
