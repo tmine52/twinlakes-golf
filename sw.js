@@ -40,6 +40,7 @@ const FILES = [
   "js/view-hole.js",
   "js/view-score.js",
   "js/clublog.js",
+  "js/glossary.js",
   "js/view-settings.js",
   "js/view-advice.js",
   "js/main.js",

@@ -391,6 +391,60 @@ dd {
 .legend .co {
   color: #d9822b;
 }
+.glbar {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--soft);
+  overflow: hidden;
+  margin: 2px 0 10px;
+}
+.glbar div {
+  height: 100%;
+  background: var(--accent);
+}
+.glterm {
+  font-size: 28px;
+  font-weight: 700;
+  margin: 10px 0 2px;
+}
+.glmean {
+  font-size: 17px;
+  line-height: 1.6;
+}
+.glitem {
+  border-top: 1px solid var(--line);
+  padding: 8px 0;
+}
+.glitem p {
+  margin: 4px 0;
+  line-height: 1.6;
+}
+.glh {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.glh button {
+  min-height: 34px;
+  padding: 0 10px;
+  font-size: 13px;
+}
+.row2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.row3 {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) minmax(0, 1fr);
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.row3.note {
+  margin-bottom: 2px;
+  text-align: center;
+}
 .pics {
   display: grid;
   gap: 6px;
@@ -555,6 +609,7 @@ tr.sum td {
     "view-hole",
     "view-score",
     "clublog",
+    "glossary",
     "view-settings",
     "view-advice",
     "main",
